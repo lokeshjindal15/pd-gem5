@@ -1,0 +1,376 @@
+# HG changeset patch
+# Parent 323db54ae3a797319144cd1c99f5cbfaa1374110
+
+diff --git a/configs/common/FSConfig.py b/configs/common/FSConfig.py
+--- a/configs/common/FSConfig.py
++++ b/configs/common/FSConfig.py
+@@ -191,7 +191,7 @@
+     return self
+ 
+ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
+-                  dtb_filename=None, bare_metal=False, cmdline=None):
++                  dtb_filename=None, options=None, bare_metal=False, cmdline=None):
+     assert machine_type
+ 
+     if bare_metal:
+@@ -234,14 +234,150 @@
+ 
+     self.cf0 = CowIdeDisk(driveID='master')
+     self.cf0.childImage(mdesc.disk())
++    self.cf1 = CowIdeDisk(driveID='master')
++    self.cf1.childImage('/research/alian/DiskImageBackupGem5/My2GBWorkload1.img')
+ 
+     # Attach any PCI devices this platform supports
+     self.realview.attachPciDevices()
++
++    if options.switch and (options.num_nodes == 4 or options.num_nodes == 5 or options.num_nodes == 8
++                or options.num_nodes == 16 or options.num_nodes == 24):
++        self.switch = EtherSwitch(port_count = options.num_nodes)
++
++        self.etherlink0 = EtherLink(no_delay = "True")
++        self.etherlink1 = EtherLink(no_delay = "True")
++        self.etherlink2 = EtherLink(no_delay = "True")
++        self.etherlink3 = EtherLink(no_delay = "True")
++
++        self.ethertap0 = EtherTap(no_delay = "True")
++        self.ethertap1 = EtherTap(no_delay = "True")
++        self.ethertap2 = EtherTap(no_delay = "True")
++        self.ethertap3 = EtherTap(no_delay = "True")
++
++        self.etherlink0.int0 = self.ethertap0.tap
++        self.etherlink0.int1 = self.switch.interface[0]
++        self.etherlink1.int0 = self.ethertap1.tap
++        self.etherlink1.int1 = self.switch.interface[1]
++        self.etherlink2.int0 = self.ethertap2.tap
++        self.etherlink2.int1 = self.switch.interface[2]
++        self.etherlink3.int0 = self.ethertap3.tap
++        self.etherlink3.int1 = self.switch.interface[3]
++
++        if options.num_nodes == 5:
++            self.etherlink4 = EtherLink(no_delay = "True")
++            self.ethertap4 = EtherTap(no_delay = "True")
++            self.etherlink4.int0 = self.ethertap4.tap
++            self.etherlink4.int1 = self.switch.interface[4]
++
++        if options.num_nodes >= 8:
++            self.etherlink4 = EtherLink(no_delay = "True")
++            self.etherlink5 = EtherLink(no_delay = "True")
++            self.etherlink6 = EtherLink(no_delay = "True")
++            self.etherlink7 = EtherLink(no_delay = "True")
++
++            self.ethertap4 = EtherTap(no_delay = "True")
++            self.ethertap5 = EtherTap(no_delay = "True")
++            self.ethertap6 = EtherTap(no_delay = "True")
++            self.ethertap7 = EtherTap(no_delay = "True")
++
++            self.etherlink4.int0 = self.ethertap4.tap
++            self.etherlink4.int1 = self.switch.interface[4]
++            self.etherlink5.int0 = self.ethertap5.tap
++            self.etherlink5.int1 = self.switch.interface[5]
++            self.etherlink6.int0 = self.ethertap6.tap
++            self.etherlink6.int1 = self.switch.interface[6]
++            self.etherlink7.int0 = self.ethertap7.tap
++            self.etherlink7.int1 = self.switch.interface[7]
++
++        if options.num_nodes >= 16:
++            self.etherlink8 = EtherLink(no_delay = "True")
++            self.etherlink9 = EtherLink(no_delay = "True")
++            self.etherlink10 = EtherLink(no_delay = "True")
++            self.etherlink11 = EtherLink(no_delay = "True")
++            self.etherlink12 = EtherLink(no_delay = "True")
++            self.etherlink13 = EtherLink(no_delay = "True")
++            self.etherlink14 = EtherLink(no_delay = "True")
++            self.etherlink15 = EtherLink(no_delay = "True")
++
++            self.ethertap8 = EtherTap(no_delay = "True")
++            self.ethertap9 = EtherTap(no_delay = "True")
++            self.ethertap10 = EtherTap(no_delay = "True")
++            self.ethertap11 = EtherTap(no_delay = "True")
++            self.ethertap12 = EtherTap(no_delay = "True")
++            self.ethertap13 = EtherTap(no_delay = "True")
++            self.ethertap14 = EtherTap(no_delay = "True")
++            self.ethertap15 = EtherTap(no_delay = "True")
++
++            self.etherlink8.int0 = self.ethertap8.tap
++            self.etherlink8.int1 = self.switch.interface[8]
++            self.etherlink9.int0 = self.ethertap9.tap
++            self.etherlink9.int1 = self.switch.interface[9]
++            self.etherlink10.int0 = self.ethertap10.tap
++            self.etherlink10.int1 = self.switch.interface[10]
++            self.etherlink11.int0 = self.ethertap11.tap
++            self.etherlink11.int1 = self.switch.interface[11]
++            self.etherlink12.int0 = self.ethertap12.tap
++            self.etherlink12.int1 = self.switch.interface[12]
++            self.etherlink13.int0 = self.ethertap13.tap
++            self.etherlink13.int1 = self.switch.interface[13]
++            self.etherlink14.int0 = self.ethertap14.tap
++            self.etherlink14.int1 = self.switch.interface[14]
++            self.etherlink15.int0 = self.ethertap15.tap
++            self.etherlink15.int1 = self.switch.interface[15]
++
++        if options.num_nodes >= 24:
++            self.etherlink16 = EtherLink(no_delay = "True")
++            self.etherlink17 = EtherLink(no_delay = "True")
++            self.etherlink18 = EtherLink(no_delay = "True")
++            self.etherlink19 = EtherLink(no_delay = "True")
++            self.etherlink20 = EtherLink(no_delay = "True")
++            self.etherlink21 = EtherLink(no_delay = "True")
++            self.etherlink22 = EtherLink(no_delay = "True")
++            self.etherlink23 = EtherLink(no_delay = "True")
++
++            self.ethertap16 = EtherTap(no_delay = "True")
++            self.ethertap17 = EtherTap(no_delay = "True")
++            self.ethertap18 = EtherTap(no_delay = "True")
++            self.ethertap19 = EtherTap(no_delay = "True")
++            self.ethertap20 = EtherTap(no_delay = "True")
++            self.ethertap21 = EtherTap(no_delay = "True")
++            self.ethertap22 = EtherTap(no_delay = "True")
++            self.ethertap23 = EtherTap(no_delay = "True")
++
++            self.etherlink16.int0 = self.ethertap16.tap
++            self.etherlink16.int1 = self.switch.interface[16]
++            self.etherlink17.int0 = self.ethertap17.tap
++            self.etherlink17.int1 = self.switch.interface[17]
++            self.etherlink18.int0 = self.ethertap18.tap
++            self.etherlink18.int1 = self.switch.interface[18]
++            self.etherlink19.int0 = self.ethertap19.tap
++            self.etherlink19.int1 = self.switch.interface[19]
++            self.etherlink20.int0 = self.ethertap20.tap
++            self.etherlink20.int1 = self.switch.interface[20]
++            self.etherlink21.int0 = self.ethertap21.tap
++            self.etherlink21.int1 = self.switch.interface[21]
++            self.etherlink22.int0 = self.ethertap22.tap
++            self.etherlink22.int1 = self.switch.interface[22]
++            self.etherlink23.int0 = self.ethertap23.tap
++            self.etherlink23.int1 = self.switch.interface[23]
++    elif options.eth and options.dual == None:
++        self.ethertap0 = EtherTap(port=options.tap_port)
++        self.etherlink = EtherLink(delay=options.link_delay,delay_var=options.link_delay_var,
++                tcp_speed = options.tcp_speed, no_ip_speed = options.no_ip_speed,
++                udp_speed = options.udp_speed,tcp_retry_speed = options.tcp_retry_speed,
++                udp_retry_speed = options.udp_retry_speed, no_ip_retry_speed = options.no_ip_retry_speed,
++                tcp_jmp_delay0 = options.tcp_jmp_delay0, tcp_jmp_delay1 = options.tcp_jmp_delay1,
++                tcp_jmp_size0 = options.tcp_jmp_size0,tcp_jmp_size1 = options.tcp_jmp_size1,
++                tcp_process_speed = options.tcp_process_speed
++                )
++        self.etherlink.int0 = self.ethertap0.tap
++        self.etherlink.int1 = self.realview.ethernet.interface
++
+     # default to an IDE controller rather than a CF one
+     try:
+-        self.realview.ide.disks = [self.cf0]
++        self.realview.ide.disks = [self.cf0,self.cf1]
+     except:
+-        self.realview.cf_ctrl.disks = [self.cf0]
++        self.realview.cf_ctrl.disks = [self.cf0,self.cf1]
+ 
+     self.mem_ranges = []
+     size_remain = long(Addr(mdesc.mem()))
+@@ -401,7 +537,7 @@
+     x86_sys.pc.attachIO(x86_sys.iobus, x86_sys._dma_ports)
+ 
+ 
+-def makeX86System(mem_mode, numCPUs=1, mdesc=None, self=None, Ruby=False):
++def makeX86System(mem_mode, options, numCPUs=1, mdesc=None, self=None, Ruby=False):
+     if self == None:
+         self = X86System()
+ 
+@@ -443,17 +579,148 @@
+     disk0 = CowIdeDisk(driveID='master')
+     disk2 = CowIdeDisk(driveID='master')
+     disk0.childImage(mdesc.disk())
+-    disk2.childImage(disk('linux-bigswap2.img'))
++    disk2.childImage(disk('/research/alian/DiskImageBackupGem5/My2GBWorkload.img'))
+     self.pc.south_bridge.ide.disks = [disk0, disk2]
+ 
+     # Ethernet
+     #  - connect to PCI bus (bus_id=0)
+     #  - connect to I/O APIC use INT-A (InterruptPin=1)
+-    self.pc.ethernet = IGbE_e1000(pci_bus=0, pci_dev=2, pci_func=0,
+-                                  InterruptLine=10, InterruptPin=1)
+-    self.pc.ethernet.pio = self.iobus.master
+-    self.pc.ethernet.config = self.iobus.master
+-    self.pc.ethernet.dma = self.iobus.slave
++    if options.eth and options.switch == None:
++        self.pc.ethernet = IGbE_e1000(pci_bus=0, pci_dev=2, pci_func=0,
++                                  InterruptLine=10, InterruptPin=1, hardware_address=options.mac)
++        self.pc.ethernet.pio = self.iobus.master
++        self.pc.ethernet.config = self.iobus.master
++        self.pc.ethernet.dma = self.iobus.slave
++
++    if options.switch and (options.num_nodes == 4 or options.num_nodes == 8
++                or options.num_nodes == 16 or options.num_nodes == 24):
++        self.switch = EtherSwitch(port_count = options.num_nodes)
++
++        self.etherlink0 = EtherLink(no_delay = "True")
++        self.etherlink1 = EtherLink(no_delay = "True")
++        self.etherlink2 = EtherLink(no_delay = "True")
++        self.etherlink3 = EtherLink(no_delay = "True")
++
++        self.ethertap0 = EtherTap(no_delay = "True")
++        self.ethertap1 = EtherTap(no_delay = "True")
++        self.ethertap2 = EtherTap(no_delay = "True")
++        self.ethertap3 = EtherTap(no_delay = "True")
++
++        self.etherlink0.int0 = self.ethertap0.tap
++        self.etherlink0.int1 = self.switch.interface[0]
++        self.etherlink1.int0 = self.ethertap1.tap
++        self.etherlink1.int1 = self.switch.interface[1]
++        self.etherlink2.int0 = self.ethertap2.tap
++        self.etherlink2.int1 = self.switch.interface[2]
++        self.etherlink3.int0 = self.ethertap3.tap
++        self.etherlink3.int1 = self.switch.interface[3]
++
++        if options.num_nodes >= 8:
++            self.etherlink4 = EtherLink(no_delay = "True")
++            self.etherlink5 = EtherLink(no_delay = "True")
++            self.etherlink6 = EtherLink(no_delay = "True")
++            self.etherlink7 = EtherLink(no_delay = "True")
++
++            self.ethertap4 = EtherTap(no_delay = "True")
++            self.ethertap5 = EtherTap(no_delay = "True")
++            self.ethertap6 = EtherTap(no_delay = "True")
++            self.ethertap7 = EtherTap(no_delay = "True")
++
++            self.etherlink4.int0 = self.ethertap4.tap
++            self.etherlink4.int1 = self.switch.interface[4]
++            self.etherlink5.int0 = self.ethertap5.tap
++            self.etherlink5.int1 = self.switch.interface[5]
++            self.etherlink6.int0 = self.ethertap6.tap
++            self.etherlink6.int1 = self.switch.interface[6]
++            self.etherlink7.int0 = self.ethertap7.tap
++            self.etherlink7.int1 = self.switch.interface[7]
++
++        if options.num_nodes >= 16:
++            self.etherlink8 = EtherLink(no_delay = "True")
++            self.etherlink9 = EtherLink(no_delay = "True")
++            self.etherlink10 = EtherLink(no_delay = "True")
++            self.etherlink11 = EtherLink(no_delay = "True")
++            self.etherlink12 = EtherLink(no_delay = "True")
++            self.etherlink13 = EtherLink(no_delay = "True")
++            self.etherlink14 = EtherLink(no_delay = "True")
++            self.etherlink15 = EtherLink(no_delay = "True")
++
++            self.ethertap8 = EtherTap(no_delay = "True")
++            self.ethertap9 = EtherTap(no_delay = "True")
++            self.ethertap10 = EtherTap(no_delay = "True")
++            self.ethertap11 = EtherTap(no_delay = "True")
++            self.ethertap12 = EtherTap(no_delay = "True")
++            self.ethertap13 = EtherTap(no_delay = "True")
++            self.ethertap14 = EtherTap(no_delay = "True")
++            self.ethertap15 = EtherTap(no_delay = "True")
++
++            self.etherlink8.int0 = self.ethertap8.tap
++            self.etherlink8.int1 = self.switch.interface[8]
++            self.etherlink9.int0 = self.ethertap9.tap
++            self.etherlink9.int1 = self.switch.interface[9]
++            self.etherlink10.int0 = self.ethertap10.tap
++            self.etherlink10.int1 = self.switch.interface[10]
++            self.etherlink11.int0 = self.ethertap11.tap
++            self.etherlink11.int1 = self.switch.interface[11]
++            self.etherlink12.int0 = self.ethertap12.tap
++            self.etherlink12.int1 = self.switch.interface[12]
++            self.etherlink13.int0 = self.ethertap13.tap
++            self.etherlink13.int1 = self.switch.interface[13]
++            self.etherlink14.int0 = self.ethertap14.tap
++            self.etherlink14.int1 = self.switch.interface[14]
++            self.etherlink15.int0 = self.ethertap15.tap
++            self.etherlink15.int1 = self.switch.interface[15]
++
++        if options.num_nodes >= 24:
++            self.etherlink16 = EtherLink(no_delay = "True")
++            self.etherlink17 = EtherLink(no_delay = "True")
++            self.etherlink18 = EtherLink(no_delay = "True")
++            self.etherlink19 = EtherLink(no_delay = "True")
++            self.etherlink20 = EtherLink(no_delay = "True")
++            self.etherlink21 = EtherLink(no_delay = "True")
++            self.etherlink22 = EtherLink(no_delay = "True")
++            self.etherlink23 = EtherLink(no_delay = "True")
++
++            self.ethertap16 = EtherTap(no_delay = "True")
++            self.ethertap17 = EtherTap(no_delay = "True")
++            self.ethertap18 = EtherTap(no_delay = "True")
++            self.ethertap19 = EtherTap(no_delay = "True")
++            self.ethertap20 = EtherTap(no_delay = "True")
++            self.ethertap21 = EtherTap(no_delay = "True")
++            self.ethertap22 = EtherTap(no_delay = "True")
++            self.ethertap23 = EtherTap(no_delay = "True")
++
++            self.etherlink16.int0 = self.ethertap16.tap
++            self.etherlink16.int1 = self.switch.interface[16]
++            self.etherlink17.int0 = self.ethertap17.tap
++            self.etherlink17.int1 = self.switch.interface[17]
++            self.etherlink18.int0 = self.ethertap18.tap
++            self.etherlink18.int1 = self.switch.interface[18]
++            self.etherlink19.int0 = self.ethertap19.tap
++            self.etherlink19.int1 = self.switch.interface[19]
++            self.etherlink20.int0 = self.ethertap20.tap
++            self.etherlink20.int1 = self.switch.interface[20]
++            self.etherlink21.int0 = self.ethertap21.tap
++            self.etherlink21.int1 = self.switch.interface[21]
++            self.etherlink22.int0 = self.ethertap22.tap
++            self.etherlink22.int1 = self.switch.interface[22]
++            self.etherlink23.int0 = self.ethertap23.tap
++            self.etherlink23.int1 = self.switch.interface[23]
++    elif options.eth and options.dual == None:
++        self.ethertap0 = EtherTap(port=options.tap_port)
++        self.etherlink = EtherLink(delay=options.link_delay,delay_var=options.link_delay_var,
++                tcp_speed = options.tcp_speed, no_ip_speed = options.no_ip_speed,
++                udp_speed = options.udp_speed,tcp_retry_speed = options.tcp_retry_speed,
++                udp_retry_speed = options.udp_retry_speed, no_ip_retry_speed = options.no_ip_retry_speed,
++                tcp_jmp_delay0 = options.tcp_jmp_delay0, tcp_jmp_delay1 = options.tcp_jmp_delay1,
++                tcp_jmp_size0 = options.tcp_jmp_size0,tcp_jmp_size1 = options.tcp_jmp_size1,
++                tcp_process_speed = options.tcp_process_speed
++                )
++        self.etherlink.int0 = self.ethertap0.tap
++        self.etherlink.int1 = self.pc.ethernet.interface
++        if options.etherdump:
++                self.etherdump1 = EtherDump(file=options.etherdump+'Link.pcap')
++                self.etherlink.dump = self.etherdump1
+ 
+     # Add in a Bios information structure.
+     structures = [X86SMBiosBiosInformation()]
+@@ -531,12 +798,12 @@
+     self.intel_mp_table.base_entries = base_entries
+     self.intel_mp_table.ext_entries = ext_entries
+ 
+-def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
++def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False, options=None,
+                        cmdline=None):
+     self = LinuxX86System()
+ 
+     # Build up the x86 system and then specialize it for Linux
+-    makeX86System(mem_mode, numCPUs, mdesc, self, Ruby)
++    makeX86System(mem_mode, options, numCPUs, mdesc, self, Ruby)
+ 
+     # We assume below that there's at least 1MB of memory. We'll require 2
+     # just to avoid corner cases.
+diff --git a/configs/common/SysPaths.py b/configs/common/SysPaths.py
+--- a/configs/common/SysPaths.py
++++ b/configs/common/SysPaths.py
+@@ -57,8 +57,7 @@
+         try:
+             path = env['M5_PATH'].split(':')
+         except KeyError:
+-            path = [ '/dist/m5/system', '/n/poolfs/z/dist/m5/system' ]
+-
++            path = [ '/research/alian/Simulators/gem5', '/research/alian/Simulators/gem5' ]
+         # filter out non-existent directories
+         system.path = filter(os.path.isdir, path)
+ 
+diff --git a/configs/example/fs.py b/configs/example/fs.py
+--- a/configs/example/fs.py
++++ b/configs/example/fs.py
+@@ -93,10 +93,11 @@
+         test_sys = makeSparcSystem(test_mem_mode, bm[0], cmdline=cmdline)
+     elif buildEnv['TARGET_ISA'] == "x86":
+         test_sys = makeLinuxX86System(test_mem_mode, options.num_cpus, bm[0],
+-                options.ruby, cmdline=cmdline)
++                options.ruby, options, cmdline=cmdline)
+     elif buildEnv['TARGET_ISA'] == "arm":
+         test_sys = makeArmSystem(test_mem_mode, options.machine_type,
+                                  options.num_cpus, bm[0], options.dtb_filename,
++                                 options,
+                                  bare_metal=options.bare_metal,
+                                  cmdline=cmdline)
+         if options.enable_context_switch_stats_dump:

@@ -1,0 +1,54 @@
+# HG changeset patch
+# Parent ab7d8ece79853668d5badcc02e6e169ab9714c44
+
+diff --git a/configs/common/Options.py b/configs/common/Options.py
+--- a/configs/common/Options.py
++++ b/configs/common/Options.py
+@@ -55,6 +55,47 @@
+     sys.exit(0)
+ 
+ def addCommonOptions(parser):
++    #Network options
++    parser.add_option("--mac", type="string", default="00:90:00:00:00:01",
++                      help = "MAC Address")
++    parser.add_option("--sync", type ="long",default=0)
++    parser.add_option("--eth", action="store_true")
++    parser.add_option("--switch", action="store_true")
++    parser.add_option("--sync-port", type="int", default=5005)
++    parser.add_option("--sync-host", type="string", default="10.0.0.1")
++    parser.add_option("--num-nodes",type="int",default=1)
++    parser.add_option("--cpt-period",type="int",default=0)
++    parser.add_option("--warmup-period",type="int",default=0)
++    parser.add_option("--zero",type="int",default=0)
++    parser.add_option("--link-delay", type="string", default='0us')
++    parser.add_option("--switch-link-delay", type="string", default='0us')
++    parser.add_option("--link-delay-var", type="string", default='0us')
++    parser.add_option("--link-speed", type="string", default='1Gbps')
++    parser.add_option("--zero-delay-switch", type="string", default='False')
++    parser.add_option("--link-delay-opt", type="string", default='0us',
++                      help = "link delay for small packets")
++    parser.add_option("--link-delay-queue", type="string", default='0us',
++                      help = "link delay for packet smaller than queuing point!")
++    parser.add_option("--link-retry-time", type="string", default='0us',
++                      help = "minimum delay between two scheduled packets")
++    parser.add_option("--link-rate-scale", type="float", default = 1.0)
++    parser.add_option("--tcp-speed", type="string", default='1Gbps')
++    parser.add_option("--tcp-retry-speed", type="string", default='1Gbps')
++    parser.add_option("--udp-retry-speed", type="string", default='1Gbps')
++    parser.add_option("--no-ip-retry-speed", type="string", default='1Gbps')
++    parser.add_option("--udp-speed", type="string", default='1Gbps')
++    parser.add_option("--no-ip-speed", type="string", default='1Gbps')
++    parser.add_option("--tcp-process-speed", type="string", default='1Gbps')
++    parser.add_option("--nic-queue-th", type="string", default='1s')
++    parser.add_option("--tap-port", type="int", default=3500)
++    parser.add_option("--tap-master", type="int", default=1)
++    parser.add_option("--tcp-jmp-size0", type="int", default=131)
++    parser.add_option("--tcp-jmp-size1", type="int", default=323)
++    parser.add_option("--tcp-jmp-delay0", type="string", default='0us')
++    parser.add_option("--tcp-jmp-delay1", type="string", default='0us')
++    parser.add_option("--server", type="string", default='True')
++    parser.add_option("--tap-first-delay", type="string", default='1ms')
++
+     # system options
+     parser.add_option("--list-cpu-types",
+                       action="callback", callback=_listCpuTypes,

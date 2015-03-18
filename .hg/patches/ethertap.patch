@@ -1,0 +1,326 @@
+# HG changeset patch
+# Parent f02017e33af610b88b7895b2c4984daf721460a6
+
+diff --git a/src/dev/Ethernet.py b/src/dev/Ethernet.py
+--- a/src/dev/Ethernet.py
++++ b/src/dev/Ethernet.py
+@@ -72,6 +72,7 @@
+     bufsz = Param.Int(10000, "tap buffer size")
+     dump = Param.EtherDump(NULL, "dump object")
+     port = Param.UInt16(3500, "tap port")
++    tap = MasterPort("EtherTap interface")
+ 
+ class EtherDump(SimObject):
+     type = 'EtherDump'
+diff --git a/src/dev/etherint.hh b/src/dev/etherint.hh
+--- a/src/dev/etherint.hh
++++ b/src/dev/etherint.hh
+@@ -67,7 +67,10 @@
+ 
+     virtual bool sendPacket(EthPacketPtr packet)
+     { return peer ? peer->recvPacket(packet) : true; }
++    virtual bool sendPacket_(EthPacketPtr packet,Tick sTick)
++    { return peer ? peer->recvPacket_(packet, sTick) : true; }
+     virtual bool recvPacket(EthPacketPtr packet) = 0;
++    virtual bool recvPacket_(EthPacketPtr packet,Tick sTick) = 0;
+ 
+     bool askBusy() {return peer->isBusy(); }
+     virtual bool isBusy() const { return false; }
+diff --git a/src/dev/etherlink.cc b/src/dev/etherlink.cc
+--- a/src/dev/etherlink.cc
++++ b/src/dev/etherlink.cc
+@@ -168,6 +168,31 @@
+     txint->sendDone();
+ }
+ 
++//This function gets called from EtherTap device
++//So receiveing packets from outside world will go through this function
++bool
++EtherLink::Link::transmit(EthPacketPtr pkt, Tick sTick_)
++{
++    if (busy()) {
++        DPRINTF(Ethernet, "packet not sent, link busy\n");
++        return false;
++    }
++
++    DPRINTF(Ethernet, "packet sent: len=%d\n", pkt->length);
++    DDUMP(EthernetData, pkt->data, pkt->length);
++
++    packet = pkt;
++    Tick delay = (Tick)ceil(((double)pkt->length * ticksPerByte) + 1.0);
++    if (delayVar != 0)
++        delay += random_mt.random<Tick>(0, delayVar);
++
++    DPRINTF(Ethernet, "scheduling packet: delay=%d, (rate=%f)\n",
++            delay, ticksPerByte);
++    parent->schedule(doneEvent, curTick() + delay);
++
++    return true;
++}
++
+ bool
+ EtherLink::Link::transmit(EthPacketPtr pkt)
+ {
+diff --git a/src/dev/etherlink.hh b/src/dev/etherlink.hh
+--- a/src/dev/etherlink.hh
++++ b/src/dev/etherlink.hh
+@@ -97,6 +97,7 @@
+ 
+         bool busy() const { return (bool)packet; }
+         bool transmit(EthPacketPtr packet);
++        bool transmit(EthPacketPtr packet,Tick sTick);
+ 
+         void setTxInt(EtherInt *i) { assert(!txint); txint = i; }
+         void setRxInt(EtherInt *i) { assert(!rxint); rxint = i; }
+@@ -118,6 +119,8 @@
+       public:
+         Interface(const std::string &name, Link *txlink, Link *rxlink);
+         bool recvPacket(EthPacketPtr packet) { return txlink->transmit(packet); }
++        bool recvPacket_(EthPacketPtr packet, Tick sTick)
++            { return txlink->transmit(packet,sTick);}
+         void sendDone() { peer->sendDone(); }
+         bool isBusy() const { return txlink->busy(); }
+     };
+diff --git a/src/dev/etherswitch.hh b/src/dev/etherswitch.hh
+--- a/src/dev/etherswitch.hh
++++ b/src/dev/etherswitch.hh
+@@ -69,6 +69,7 @@
+                   int inputBufferSize, int outputBufferSize);
+         bool recvPacket(EthPacketPtr packet);
+         bool sendPacket(EthPacketPtr Packet);
++        bool recvPacket_(EthPacketPtr packet,Tick sTick){return true;}
+         void sendQueuedPacket();
+         EthPacketPtr getInputPacket();
+         void popInputPacket() { inputFifo.pop(); }
+diff --git a/src/dev/ethertap.cc b/src/dev/ethertap.cc
+--- a/src/dev/ethertap.cc
++++ b/src/dev/ethertap.cc
+@@ -51,9 +51,40 @@
+ #include "dev/etherint.hh"
+ #include "dev/etherpkt.hh"
+ #include "dev/ethertap.hh"
++#include <sstream>
++#include <stdlib.h>
++#include <stdio.h>
++#include <netinet/tcp.h>
++#include <stdio.h>
++#include <sys/types.h>
++#include <ifaddrs.h>
++#include <netinet/in.h>
++#include <string.h>
++#include <arpa/inet.h>
+ 
++std::string uint64_to_string( uint64_t value );
++uint64_t extractTick(char*);
+ using namespace std;
+ 
++// uint_64(Tick) to string
++std::string uint64_to_string( uint64_t value ) {
++    std::ostringstream os;
++    os << value;
++    return os.str();
++}
++
++// extract sender's tick from the packet
++uint64_t extractTick(char* tick){
++    int i=0;
++    while(i<TickDigits){
++        if(tick[i]!='0')
++            break;
++            i++;
++    }
++    return atol(tick+i);
++}
++
++
+ /**
+  */
+ class TapListener
+@@ -98,6 +129,32 @@
+         port++;
+     }
+ 
++    FILE *f;
++    struct ifaddrs * ifAddrStruct=NULL;
++    struct ifaddrs * ifa=NULL;
++    void * tmpAddrPtr=NULL;
++    f = fopen("tap.conf", "w");
++    getifaddrs(&ifAddrStruct);
++
++    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
++        if (!ifa->ifa_addr) {
++            continue;
++        }
++        if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
++            // is a valid IP4 Address
++            tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
++            char addressBuffer[INET_ADDRSTRLEN];
++            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
++            if (!strcmp(ifa->ifa_name,"eth0") || !strcmp(ifa->ifa_name,"eth1"))
++                 fprintf(f,"%s= %s\n", ifa->ifa_name, addressBuffer);
++                 printf("%s= %s\n", ifa->ifa_name, addressBuffer);
++        }
++    }
++    if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
++
++    fprintf(f,"tapport= %d\n", port);
++    printf("tapport= %d\n", port);
++    fclose(f);
+     ccprintf(cerr, "Listening for tap connection on port %d\n", port);
+     event = new Event(this, listener.getfd(), POLLIN|POLLERR);
+     pollQueue.schedule(event);
+@@ -188,15 +245,32 @@
+ 
+     DPRINTF(Ethernet, "EtherTap output len=%d\n", packet->length);
+     DDUMP(EthernetData, packet->data, packet->length);
+-    uint32_t len = htonl(packet->length);
++
++    uint32_t len = htonl(packet->length+TickDigits);
++    // send current tick to the peer at the end of packet
++    // Just capture 1 sec of simulated time
++    int j=0;
++    Tick_int=0;
++    char tick_cstr[TickDigits+1];
++    Tick_int = curTick() % 1000000000000;
++    sprintf(tick_cstr,"%lu",Tick_int);
++    for(j=0;j<packet->length;j++)
++       buff[j]=packet->data[j];
++    for(j=TickDigits-strlen(tick_cstr);j<TickDigits;j++)
++       buff[j+packet->length] = tick_cstr[j-(TickDigits-strlen(tick_cstr))];
++
++    for(j=0;j<TickDigits-strlen(tick_cstr);j++)
++       buff[j+packet->length] = '0';
++    buff[packet->length+TickDigits]='\0';
+     ssize_t ret = write(socket, &len, sizeof(len));
+     if (ret != sizeof(len))
+         return false;
+-    ret = write(socket, packet->data, packet->length);
+-    if (ret != packet->length)
++
++    ret = write(socket, buff, packet->length+TickDigits);
++    if (ret != packet->length + TickDigits)
+         return false;
+ 
+-    interface->recvDone();
++//    interface->recvDone();
+ 
+     return true;
+ }
+@@ -233,7 +307,18 @@
+                 "data_len=%d\n", len, buffer_offset, data_len);
+     }
+ 
++    int k=0;
+     while (data_len != 0 && buffer_offset >= data_len + sizeof(uint32_t)) {
++        buffer_offset -= TickDigits;
++        memmove(SenderTick,buffer+sizeof(uint32_t)+data_len-TickDigits,TickDigits);
++        data_len -= TickDigits;
++        for (k=0;k<TickDigits;k++)
++            if(SenderTick[k]!='0')
++                break;
++        memmove(SenderTick,SenderTick+k,TickDigits-k);
++        SenderTick[TickDigits-k] = '\0';
++        uint64_t sTick = extractTick(SenderTick) + curTick() - curTick()%1000000000000;
++
+         EthPacketPtr packet;
+         packet = make_shared<EthPacketData>(data_len);
+         packet->length = data_len;
+@@ -242,15 +327,16 @@
+         buffer_offset -= data_len + sizeof(uint32_t);
+         assert(buffer_offset >= 0);
+         if (buffer_offset > 0) {
+-            memmove(buffer, data + data_len, buffer_offset);
++            memmove(buffer, data + data_len + TickDigits, buffer_offset);
+             data_len = ntohl(*(uint32_t *)buffer);
+         } else
+             data_len = 0;
+ 
+-        DPRINTF(Ethernet, "EtherTap input len=%d\n", packet->length);
++        DPRINTF(Ethernet, "EtherTap input len=%d,STick=%lu\n", packet->length,sTick);
+         DDUMP(EthernetData, packet->data, packet->length);
+-        if (!interface->sendPacket(packet)) {
++        if (!interface->sendPacket_(packet,sTick)) {
+             DPRINTF(Ethernet, "bus busy...buffer for retransmission\n");
++            tickBuffer.push(sTick);
+             packetBuffer.push(packet);
+             if (!txEvent.scheduled())
+                 schedule(txEvent, curTick() + retryTime);
+@@ -267,12 +353,13 @@
+         return;
+ 
+     EthPacketPtr packet = packetBuffer.front();
+-    if (interface->sendPacket(packet)) {
++    if (interface->sendPacket_(packet,tickBuffer.front())) {
+         if (dump)
+             dump->dump(packet);
+         DPRINTF(Ethernet, "EtherTap retransmit\n");
+         packetBuffer.front() = NULL;
+         packetBuffer.pop();
++        tickBuffer.pop();
+     }
+ 
+     if (!packetBuffer.empty() && !txEvent.scheduled())
+diff --git a/src/dev/ethertap.hh b/src/dev/ethertap.hh
+--- a/src/dev/ethertap.hh
++++ b/src/dev/ethertap.hh
+@@ -45,6 +45,8 @@
+ #include "params/EtherTap.hh"
+ #include "sim/eventq.hh"
+ #include "sim/sim_object.hh"
++#include <sstream>
++#define TickDigits 12
+ 
+ class TapEvent;
+ class TapListener;
+@@ -58,6 +60,10 @@
+   protected:
+     friend class TapEvent;
+     TapEvent *event;
++    uint64_t Tick_int;
++    char buff[10000];
++    char SenderTick[TickDigits+1];
++    std::queue<Tick> tickBuffer;
+ 
+   protected:
+     friend class TapListener;
+@@ -129,6 +135,7 @@
+     { }
+ 
+     virtual bool recvPacket(EthPacketPtr pkt) { return tap->recvPacket(pkt); }
++    virtual bool recvPacket_(EthPacketPtr packet,Tick sTick){return true;}
+     virtual void sendDone() { tap->sendDone(); }
+ };
+ 
+diff --git a/src/dev/i8254xGBe.hh b/src/dev/i8254xGBe.hh
+--- a/src/dev/i8254xGBe.hh
++++ b/src/dev/i8254xGBe.hh
+@@ -549,6 +549,7 @@
+     { }
+ 
+     virtual bool recvPacket(EthPacketPtr pkt) { return dev->ethRxPkt(pkt); }
++    virtual bool recvPacket_(EthPacketPtr packet,Tick sTick){return true;}
+     virtual void sendDone() { dev->ethTxDone(); }
+ };
+ 
+diff --git a/src/dev/ns_gige.hh b/src/dev/ns_gige.hh
+--- a/src/dev/ns_gige.hh
++++ b/src/dev/ns_gige.hh
+@@ -386,6 +386,7 @@
+     { }
+ 
+     virtual bool recvPacket(EthPacketPtr pkt) { return dev->recvPacket(pkt); }
++    virtual bool recvPacket_(EthPacketPtr packet,Tick sTick){return true;}
+     virtual void sendDone() { dev->transferDone(); }
+ };
+ 
+diff --git a/src/dev/sinic.hh b/src/dev/sinic.hh
+--- a/src/dev/sinic.hh
++++ b/src/dev/sinic.hh
+@@ -319,6 +319,7 @@
+     { }
+ 
+     virtual bool recvPacket(EthPacketPtr pkt) { return dev->recvPacket(pkt); }
++    virtual bool recvPacket_(EthPacketPtr packet,Tick sTick){return true;}
+     virtual void sendDone() { dev->transferDone(); }
+ };
+ 

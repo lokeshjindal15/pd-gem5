@@ -1,0 +1,34 @@
+# HG changeset patch
+# Parent 8285e1e9705875abe656b240e6d9f9a24c788b0a
+
+diff --git a/configs/common/Simulation.py b/configs/common/Simulation.py
+--- a/configs/common/Simulation.py
++++ b/configs/common/Simulation.py
+@@ -285,6 +285,7 @@
+     TCP_PORT = options.sync_port
+     BUFFER_SIZE = 1
+     MESSAGE = "R"
++    pre_tick = m5.curTick()
+     if options.switch == None:
+         try:
+             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+@@ -301,13 +302,13 @@
+             sys.exit()
+         while total_tick_simulated <= maxreltick and (exit_cause =="simulate() limit reached" or exit_cause =="checkpoint"):
+             if exit_cause == "checkpoint":
+-                m5.checkpoint(joinpath(cptdir, "cpt.%d"))
+-                num_checkpoints += 1
+-                if num_checkpoints == max_checkpoints:
+-                    exit_cause = "maximum %d checkpoints dropped" % max_checkpoints
+-                    break
+-            s.send(MESSAGE)
++                m5.simulate(pre_tick + sync_ticks - m5.curTick())
++                s.send("C") #send "C" to barrier to notify that we should take a checkpoint in next quantum
++            else:
++                s.send(MESSAGE)
++
+             data = s.recv(BUFFER_SIZE)
++            pre_tick = m5.curTick()
+             exit_event = m5.simulate(sync_ticks)
+             total_tick_simulated +=sync_ticks
+             if options.cpt_period and (total_tick_simulated >= options.warmup_period):

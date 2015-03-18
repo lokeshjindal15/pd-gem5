@@ -1,0 +1,77 @@
+# HG changeset patch
+# Parent 630c8b34d2b1c15ea3c19dd15b8217220f0c6b16
+
+diff --git a/configs/common/CacheConfig.py b/configs/common/CacheConfig.py
+--- a/configs/common/CacheConfig.py
++++ b/configs/common/CacheConfig.py
+@@ -55,12 +55,30 @@
+ 
+         dcache_class, icache_class, l2_cache_class = \
+             O3_ARM_v7a_DCache, O3_ARM_v7a_ICache, O3_ARM_v7aL2
++    elif options.cpu_type == 'piledriver':
++        try:
++            from PileDriver import *
++        except:
++            print "piledriver is unavailable. Did you compile the O3 model?"
++            sys.exit(1)
++
++        dcache_class, icache_class, l2_cache_class = \
++            PileDriver_DCache, PileDriver_ICache, PileDriver_L2
++
+     else:
+         dcache_class, icache_class, l2_cache_class = \
+             L1Cache, L1Cache, L2Cache
+ 
+     # Set the cache line size of the system
+     system.cache_line_size = options.cacheline_size
++    if options.cpu_type == "piledriver":
++        # For PileDriver we have specified l2 size in the configuration file
++        # Also, I think bus width of "cpu to l2" is 64 bits but for now stick with 32, because I got an error and it may be from this
++        system.l2 = l2_cache_class(clk_domain = system.cpu_clk_domain)
++        system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
++                                     width = 32)
++        system.l2.cpu_side = system.tol2bus.master
++        system.l2.mem_side = system.membus.slave
+ 
+     if options.l2cache:
+         # Provide a clock for the L2 and the L1-to-L2 bus here as they
+@@ -80,6 +98,16 @@
+         system.memchecker = MemChecker()
+ 
+     for i in xrange(options.num_cpus):
++        if options.cpu_type == "piledriver":
++            icache = icache_class()
++            dcache = dcache_class()
++            if buildEnv['TARGET_ISA'] == 'x86':
++                system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
++                                                      PageTableWalkerCache(),
++                                                      PageTableWalkerCache())
++            else:
++                system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
++
+         if options.caches:
+             icache = icache_class(size=options.l1i_size,
+                                   assoc=options.l1i_assoc)
+@@ -117,7 +145,7 @@
+                 system.cpu[i].dcache_mon = dcache_mon
+ 
+         system.cpu[i].createInterruptController()
+-        if options.l2cache:
++        if options.l2cache or options.cpu_type == "piledriver":
+             system.cpu[i].connectAllPorts(system.tol2bus, system.membus)
+         else:
+             system.cpu[i].connectAllPorts(system.membus)
+diff --git a/configs/common/CpuConfig.py b/configs/common/CpuConfig.py
+--- a/configs/common/CpuConfig.py
++++ b/configs/common/CpuConfig.py
+@@ -113,7 +113,10 @@
+ # in the normal object hierarchy, so we have to add it manually.
+ try:
+     from O3_ARM_v7a import O3_ARM_v7a_3
++    from PileDriver import PileDriver
+     _cpu_classes["arm_detailed"] = O3_ARM_v7a_3
++    _cpu_classes["piledriver"] = PileDriver
++
+ except:
+     pass
+ 

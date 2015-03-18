@@ -1,0 +1,42 @@
+# HG changeset patch
+# Parent bc7c76d9e2b9e16411ca9d953d98daaa5b237b23
+
+diff --git a/configs/common/FSConfig.py b/configs/common/FSConfig.py
+--- a/configs/common/FSConfig.py
++++ b/configs/common/FSConfig.py
+@@ -238,7 +238,7 @@
+     self.cf1.childImage('/research/alian/DiskImageBackupGem5/My2GBWorkload1.img')
+ 
+     # Attach any PCI devices this platform supports
+-    self.realview.attachPciDevices()
++    self.realview.attachPciDevices(options.mac)
+ 
+     if options.switch and (options.num_nodes == 4 or options.num_nodes == 8
+                 or options.num_nodes == 16 or options.num_nodes == 24):
+diff --git a/configs/common/SysPaths.py b/configs/common/SysPaths.py
+--- a/configs/common/SysPaths.py
++++ b/configs/common/SysPaths.py
+@@ -57,7 +57,7 @@
+         try:
+             path = env['M5_PATH'].split(':')
+         except KeyError:
+-            path = [ '/research/alian/Simulators/gem5', '/research/alian/Simulators/gem5' ]
++            path = [ '/users/alian/Simulators/gem5', '/users/alian/Simulators/gem5' ]
+         # filter out non-existent directories
+         system.path = filter(os.path.isdir, path)
+ 
+diff --git a/src/dev/arm/RealView.py b/src/dev/arm/RealView.py
+--- a/src/dev/arm/RealView.py
++++ b/src/dev/arm/RealView.py
+@@ -487,9 +487,9 @@
+     energy_ctrl    = EnergyCtrl(pio_addr=0x1c080000)
+ 
+     # Attach any PCI devices that are supported
+-    def attachPciDevices(self):
++    def attachPciDevices(self, mac):
+         self.ethernet = IGbE_e1000(pci_bus=0, pci_dev=0, pci_func=0,
+-                                   InterruptLine=1, InterruptPin=1)
++                                   InterruptLine=1, InterruptPin=1, hardware_address = mac)
+         self.ide = IdeController(disks = [], pci_bus=0, pci_dev=1, pci_func=0,
+                                  InterruptLine=2, InterruptPin=2)
+ 

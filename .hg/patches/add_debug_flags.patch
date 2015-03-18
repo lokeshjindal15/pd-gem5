@@ -1,0 +1,25 @@
+# HG changeset patch
+# Parent 525f39947b75dc9e66d528ecf7e558ecb3373163
+
+diff --git a/src/dev/SConscript b/src/dev/SConscript
+--- a/src/dev/SConscript
++++ b/src/dev/SConscript
+@@ -84,6 +84,7 @@
+ DebugFlag('DMA')
+ DebugFlag('DMACopyEngine')
+ DebugFlag('Ethernet')
++DebugFlag('EthernetTimingViolation')
+ DebugFlag('EthernetCksum')
+ DebugFlag('EthernetDMA')
+ DebugFlag('EthernetData')
+diff --git a/src/dev/etherlink.cc b/src/dev/etherlink.cc
+--- a/src/dev/etherlink.cc
++++ b/src/dev/etherlink.cc
+@@ -42,6 +42,7 @@
+ #include "base/trace.hh"
+ #include "debug/Ethernet.hh"
+ #include "debug/EthernetData.hh"
++#include "debug/EthernetTimingViolation.hh"
+ #include "dev/etherdump.hh"
+ #include "dev/etherint.hh"
+ #include "dev/etherlink.hh"

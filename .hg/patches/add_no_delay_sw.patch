@@ -1,0 +1,359 @@
+# HG changeset patch
+# Parent e43d1a5ce7b7fd7e80f845f8f259fedbe4de6cfc
+
+diff --git a/src/dev/Ethernet.py b/src/dev/Ethernet.py
+--- a/src/dev/Ethernet.py
++++ b/src/dev/Ethernet.py
+@@ -55,6 +55,7 @@
+     tcp_jmp_delay1 = Param.Latency('0us', "packet transmit delay for tcp packets: tcp_jmp_size1< pkt_size")
+     tcp_jmp_size0 = Param.Int(131,"latency jump point 0")
+     tcp_jmp_size1 = Param.Int(323,"latency jump point 1")
++    no_delay = Param.Bool(False,"If true, then we don't add/remove time stamp to out-going/in-going pkts")
+ 
+ class EtherBus(EtherObject):
+     type = 'EtherBus'
+@@ -83,6 +84,7 @@
+     dump = Param.EtherDump(NULL, "dump object")
+     port = Param.UInt16(3500, "tap port")
+     tap = MasterPort("EtherTap interface")
++    no_delay = Param.Bool(False,"If true, then we don't add/remove time stamp to out-going/in-going pkts")
+ 
+ class EtherDump(SimObject):
+     type = 'EtherDump'
+diff --git a/src/dev/etherlink.cc b/src/dev/etherlink.cc
+--- a/src/dev/etherlink.cc
++++ b/src/dev/etherlink.cc
+@@ -64,13 +64,13 @@
+                        p->delay, p->delay_var, p->dump,
+                        p->tcp_speed, p->udp_speed, p->no_ip_speed,
+                        p->tcp_retry_speed, p->udp_retry_speed, p->no_ip_retry_speed, p->tcp_process_speed,
+-                       p->tcp_jmp_delay0, p->tcp_jmp_delay1, p->tcp_jmp_size0, p->tcp_jmp_size1
++                       p->tcp_jmp_delay0, p->tcp_jmp_delay1, p->tcp_jmp_size0, p->tcp_jmp_size1, p->no_delay
+                         );
+     link[1] = new Link(name() + ".link1", this, 1,
+                        p->delay, p->delay_var, p->dump,
+                        p->tcp_speed, p->udp_speed, p->no_ip_speed,
+                        p->tcp_retry_speed, p->udp_retry_speed, p->no_ip_retry_speed, p->tcp_process_speed,
+-                       p->tcp_jmp_delay0, p->tcp_jmp_delay1, p->tcp_jmp_size0, p->tcp_jmp_size1
++                       p->tcp_jmp_delay0, p->tcp_jmp_delay1, p->tcp_jmp_size0, p->tcp_jmp_size1, p->no_delay
+                         );
+ 
+     interface[0] = new Interface(name() + ".int0", link[0], link[1]);
+@@ -115,14 +115,14 @@
+                       double rateTCP, double rateUDP, double rateNoIP,
+                       double rateRetryTCP, double rateRetryUDP,
+                       double rateRetryNoIP, double rateProcessTCP,
+-                      Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1)
++                      Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1,bool no_delay)
+     : objName(name), parent(p), number(num), txint(NULL), rxint(NULL),
+       ticksPerByteTCP(rateTCP),ticksPerByteUDP(rateUDP),ticksPerByteNoIP(rateNoIP),
+       ticksPerByteRetryTCP(rateRetryTCP),ticksPerByteRetryUDP(rateRetryUDP),
+       ticksPerByteRetryNoIP(rateRetryNoIP),ticksPerByteProcessTCP(rateProcessTCP),
+       linkDelay(delay), delayVar(delay_var), dump(d),
+       linkDelayJmp0(DelayJmp0),linkDelayJmp1(DelayJmp1),preScheduleTick(0),retryTick(0),
+-      releaseTick(0),DelayJmpPoint0(SizeJmp0),DelayJmpPoint1(SizeJmp1),
++      releaseTick(0),DelayJmpPoint0(SizeJmp0),DelayJmpPoint1(SizeJmp1),noDelay(no_delay),
+       doneEvent(this)
+ { }
+ 
+@@ -337,7 +337,7 @@
+         return false;
+     }
+ 
+-    DPRINTF(Ethernet, "received packet from !ethertap device: len=%d\n"
++    DPRINTF(Ethernet, "received packet from !ethertap/ethertap device: len=%d\n"
+                 , pkt->length);
+     DDUMP(EthernetData, pkt->data, pkt->length);
+ 
+@@ -345,6 +345,12 @@
+     Tick delay;
+     bool flag = true;
+ 
++    if(noDelay){
++        DPRINTF(Ethernet,"No Delay enabled!\n");
++        txDone();
++        return true;
++    }
++
+     IpPtr ip(pkt);
+     if (ip) {
+         DPRINTF(Ethernet, "Proccesing Ip packet with Id=%d\n", ip->id());
+diff --git a/src/dev/etherlink.hh b/src/dev/etherlink.hh
+--- a/src/dev/etherlink.hh
++++ b/src/dev/etherlink.hh
+@@ -89,6 +89,7 @@
+         Tick releaseTick;
+         int DelayJmpPoint0;
+         int DelayJmpPoint1;
++        bool noDelay;
+ 
+       protected:
+         /*
+@@ -109,7 +110,7 @@
+              Tick delay, Tick delay_var, EtherDump *dump,
+              double rateTCP, double rateUDP, double rateNoIP,
+              double rateRetryTCP, double rateRetryUDP, double rateRetryNoIP, double rateProcessTCP,
+-             Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1);
++             Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1, bool no_delay);
+         ~Link() {}
+ 
+         const std::string name() const { return objName; }
+diff --git a/src/dev/etherswitch.cc b/src/dev/etherswitch.cc
+--- a/src/dev/etherswitch.cc
++++ b/src/dev/etherswitch.cc
+@@ -176,7 +176,7 @@
+ EtherSwitch::EtherFabric::EtherFabric(const std::string &name,
+                                       EtherSwitch &_etherSwitch, double rate)
+     : fabricName(name), etherSwitch(_etherSwitch), ticksPerByte(rate),
+-      interfaces(NULL)
++      interfaces(NULL),retryEvent(this)
+ {
+ }
+ 
+@@ -187,7 +187,10 @@
+ 
+     fabricLinks.clear();
+ }
+-
++void
++EtherSwitch::EtherFabric::retryForwarding(){
++    etherSwitch.scheduleForwarding();
++}
+ // connect rx and tx links in a point-to-point fashion for
+ // each port on the switch. there will always be n*(n-1) links.
+ // this essentially creates the switch fabric
+@@ -208,7 +211,7 @@
+                                               etherSwitch.params()->delay,
+                                               etherSwitch.params()->delay_var,
+                                               etherSwitch.params()->dump,
+-                                              0,0,0,0,0,0,0,0,0,1515,1515);
++                                              0,0,0,0,0,0,0,0,0,1515,1515,true);
+             link->setTxInt(itr1);
+             link->setRxInt(itr2);
+             std::pair<Interface*, Interface*> intPair
+@@ -231,7 +234,7 @@
+ {
+     Interface *receiver;
+     Interface *sender;
+-
++    bool anyPacket = false;
+     // we use a temporary vector copy of interfaces because
+     // the objects in interfaces may be moved around in the
+     // for loop, i.e., the copy is used to ensure the iterators
+@@ -247,6 +250,7 @@
+         if (!packet)
+             continue;
+ 
++        anyPacket = true;
+         uint8_t srcAddr[ETH_ADDR_LEN];
+         uint8_t destAddr[ETH_ADDR_LEN];
+         memcpy(srcAddr, &packet->data[6], ETH_ADDR_LEN);
+@@ -270,6 +274,13 @@
+                 updateLRG(sender);
+         }
+     }
++    DPRINTF(Ethernet, "Outstanding packets in output queue\n");
++    if (anyPacket){
++        if(!retryEvent.scheduled()){
++            DPRINTF(Ethernet, "Still there might be some packets in the input queue\n");
++            etherSwitch.schedule(retryEvent, curTick() + 1000);
++        }
++    }
+ }
+ 
+ // send any outgoing packets along to their receiving
+diff --git a/src/dev/etherswitch.hh b/src/dev/etherswitch.hh
+--- a/src/dev/etherswitch.hh
++++ b/src/dev/etherswitch.hh
+@@ -125,6 +125,8 @@
+         // maintain a least recently granted (LRG) ordering
+         // of the ports for arbitration
+         std::vector<Interface*> *interfaces;
++        void retryForwarding();
++        EventWrapper<EtherFabric, &EtherFabric::retryForwarding> retryEvent;
+     };
+ 
+   private:
+diff --git a/src/dev/ethertap.cc b/src/dev/ethertap.cc
+--- a/src/dev/ethertap.cc
++++ b/src/dev/ethertap.cc
+@@ -164,7 +164,7 @@
+ 
+ EtherTap::EtherTap(const Params *p)
+     : EtherObject(p), event(NULL), socket(-1), buflen(p->bufsz), dump(p->dump),
+-      interface(NULL), txEvent(this)
++      interface(NULL), noDelay(p->no_delay), txEvent(this)
+ {
+     if (ListenSocket::allDisabled())
+         fatal("All listeners are disabled! EtherTap can't work!");
+@@ -218,32 +218,45 @@
+ 
+     DPRINTF(Ethernet, "EtherTap output len=%d\n", packet->length);
+     DDUMP(EthernetData, packet->data, packet->length);
++    if(!noDelay){
++        DPRINTF(Ethernet, "Adding time stamp to out going packet\n");
++        uint32_t len = htonl(packet->length+TickDigits);
++        // send current tick to the peer at the end of packet
++        // Just capture 1 sec of simulated time
++        int j=0;
++        Tick_int=0;
++        char tick_cstr[TickDigits+1];
++        Tick_int = curTick() % 1000000000000;
++        sprintf(tick_cstr,"%lu",Tick_int);
++        for(j=0;j<packet->length;j++)
++            buff[j]=packet->data[j];
++        for(j=TickDigits-strlen(tick_cstr);j<TickDigits;j++)
++            buff[j+packet->length] = tick_cstr[j-(TickDigits-strlen(tick_cstr))];
+ 
+-    uint32_t len = htonl(packet->length+TickDigits);
+-    // send current tick to the peer at the end of packet
+-    // Just capture 1 sec of simulated time
+-    int j=0;
+-    Tick_int=0;
+-    char tick_cstr[TickDigits+1];
+-    Tick_int = curTick() % 1000000000000;
+-    sprintf(tick_cstr,"%lu",Tick_int);
+-    for(j=0;j<packet->length;j++)
+-       buff[j]=packet->data[j];
+-    for(j=TickDigits-strlen(tick_cstr);j<TickDigits;j++)
+-       buff[j+packet->length] = tick_cstr[j-(TickDigits-strlen(tick_cstr))];
++        for(j=0;j<TickDigits-strlen(tick_cstr);j++)
++            buff[j+packet->length] = '0';
++        buff[packet->length+TickDigits]='\0';
++        ssize_t ret = write(socket, &len, sizeof(len));
++        if (ret != sizeof(len))
++            return false;
+ 
+-    for(j=0;j<TickDigits-strlen(tick_cstr);j++)
+-       buff[j+packet->length] = '0';
+-    buff[packet->length+TickDigits]='\0';
++        ret = write(socket, buff, packet->length+TickDigits);
++        if (ret != packet->length + TickDigits)
++            return false;
++
++        //interface->recvDone();
++
++        return true;
++    }
++    uint32_t len = htonl(packet->length);
+     ssize_t ret = write(socket, &len, sizeof(len));
+     if (ret != sizeof(len))
+         return false;
+-
+-    ret = write(socket, buff, packet->length+TickDigits);
+-    if (ret != packet->length + TickDigits)
++    ret = write(socket, packet->data, packet->length);
++    if (ret != packet->length)
+         return false;
+ 
+-//    interface->recvDone();
++    //interface->recvDone();
+ 
+     return true;
+ }
+@@ -280,18 +293,47 @@
+                 "data_len=%d\n", len, buffer_offset, data_len);
+     }
+ 
+-    int k=0;
++    if(!noDelay){
++        int k=0;
++        while (data_len != 0 && buffer_offset >= data_len + sizeof(uint32_t)) {
++            buffer_offset -= TickDigits;
++            memmove(SenderTick,buffer+sizeof(uint32_t)+data_len-TickDigits,TickDigits);
++            data_len -= TickDigits;
++            for (k=0;k<TickDigits;k++)
++                if(SenderTick[k]!='0')
++                    break;
++            memmove(SenderTick,SenderTick+k,TickDigits-k);
++            SenderTick[TickDigits-k] = '\0';
++            uint64_t sTick = extractTick(SenderTick) + curTick() - curTick()%1000000000000;
++
++            EthPacketPtr packet;
++            packet = make_shared<EthPacketData>(data_len);
++            packet->length = data_len;
++            memcpy(packet->data, data, data_len);
++
++            buffer_offset -= data_len + sizeof(uint32_t);
++            assert(buffer_offset >= 0);
++            if (buffer_offset > 0) {
++                memmove(buffer, data + data_len + TickDigits, buffer_offset);
++                data_len = ntohl(*(uint32_t *)buffer);
++            } else
++                data_len = 0;
++
++            DPRINTF(Ethernet, "EtherTap input len=%d,STick=%lu\n", packet->length,sTick);
++            DDUMP(EthernetData, packet->data, packet->length);
++            if (!interface->sendPacket_(packet,sTick)) {
++                DPRINTF(Ethernet, "bus busy...buffer for retransmission\n");
++                tickBuffer.push(sTick);
++                packetBuffer.push(packet);
++                if (!txEvent.scheduled())
++                    schedule(txEvent, curTick() + retryTime);
++            } else if (dump) {
++                dump->dump(packet);
++            }
++        }
++        return;
++    }
+     while (data_len != 0 && buffer_offset >= data_len + sizeof(uint32_t)) {
+-        buffer_offset -= TickDigits;
+-        memmove(SenderTick,buffer+sizeof(uint32_t)+data_len-TickDigits,TickDigits);
+-        data_len -= TickDigits;
+-        for (k=0;k<TickDigits;k++)
+-            if(SenderTick[k]!='0')
+-                break;
+-        memmove(SenderTick,SenderTick+k,TickDigits-k);
+-        SenderTick[TickDigits-k] = '\0';
+-        uint64_t sTick = extractTick(SenderTick) + curTick() - curTick()%1000000000000;
+-
+         EthPacketPtr packet;
+         packet = make_shared<EthPacketData>(data_len);
+         packet->length = data_len;
+@@ -300,16 +342,15 @@
+         buffer_offset -= data_len + sizeof(uint32_t);
+         assert(buffer_offset >= 0);
+         if (buffer_offset > 0) {
+-            memmove(buffer, data + data_len + TickDigits, buffer_offset);
++            memmove(buffer, data + data_len, buffer_offset);
+             data_len = ntohl(*(uint32_t *)buffer);
+         } else
+             data_len = 0;
+ 
+-        DPRINTF(Ethernet, "EtherTap input len=%d,STick=%lu\n", packet->length,sTick);
++        DPRINTF(Ethernet, "EtherTap input len=%d\n", packet->length);
+         DDUMP(EthernetData, packet->data, packet->length);
+-        if (!interface->sendPacket_(packet,sTick)) {
++        if (!interface->sendPacket(packet)) {
+             DPRINTF(Ethernet, "bus busy...buffer for retransmission\n");
+-            tickBuffer.push(sTick);
+             packetBuffer.push(packet);
+             if (!txEvent.scheduled())
+                 schedule(txEvent, curTick() + retryTime);
+@@ -326,7 +367,14 @@
+         return;
+ 
+     EthPacketPtr packet = packetBuffer.front();
+-    if (interface->sendPacket_(packet,tickBuffer.front())) {
++    if (interface->sendPacket(packet) && (noDelay)) {
++        if (dump)
++            dump->dump(packet);
++        DPRINTF(Ethernet, "EtherTap retransmit\n");
++        packetBuffer.front() = NULL;
++        packetBuffer.pop();
++    }
++    else if (interface->sendPacket_(packet,tickBuffer.front()) && (!noDelay)) {
+         if (dump)
+             dump->dump(packet);
+         DPRINTF(Ethernet, "EtherTap retransmit\n");
+diff --git a/src/dev/ethertap.hh b/src/dev/ethertap.hh
+--- a/src/dev/ethertap.hh
++++ b/src/dev/ethertap.hh
+@@ -83,6 +83,7 @@
+     std::string device;
+     std::queue<EthPacketPtr> packetBuffer;
+     EtherTapInt *interface;
++    bool noDelay;
+ 
+     void process(int revent);
+     void enqueue(EthPacketData *packet);

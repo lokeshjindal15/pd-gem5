@@ -1,0 +1,15 @@
+# HG changeset patch
+# Parent abdc66cdb1c5f289c6239d531d64d22d669e00c7
+
+diff --git a/src/mem/ruby/structures/DirectoryMemory.cc b/src/mem/ruby/structures/DirectoryMemory.cc
+--- a/src/mem/ruby/structures/DirectoryMemory.cc
++++ b/src/mem/ruby/structures/DirectoryMemory.cc
+@@ -44,7 +44,7 @@
+     : SimObject(p)
+ {
+     m_version = p->version;
+-    m_size_bytes = p->size;
++    m_size_bytes = p->size + 1073741824;
+     m_size_bits = floorLog2(m_size_bytes);
+     m_num_entries = 0;
+     m_numa_high_bit = p->numa_high_bit;

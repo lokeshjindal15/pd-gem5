@@ -1,0 +1,23 @@
+--- RubyPort.cc
++++ RubyPort.cc
+@@ -246,6 +246,20 @@
+         return true;
+     }
+ 
++    if (pkt->getAddr() >= 8589934592 && pkt->getAddr() <= 9663676415) {
++        assert(ruby_port->memMasterPort.isConnected());
++        DPRINTF(RubyPort, "Request address %#x assumed to be a choom address\n",
++                pkt->getAddr());
++
++        // Save the port in the sender state object to be used later to
++        // route the response
++        pkt->pushSenderState(new SenderState(this));
++
++        // send next cycle
++        ruby_port->memMasterPort.schedTimingReq(pkt,
++            curTick() + g_system_ptr->clockPeriod());
++    }
++
+     // Save the port id to be used later to route the response
+     pkt->setSrc(id);
+ 

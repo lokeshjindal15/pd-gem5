@@ -1,0 +1,189 @@
+# HG changeset patch
+# Parent 79ca9af7152f3117a3e85c2d2efe91b063f317ff
+
+diff --git a/src/dev/ethertap.cc b/src/dev/ethertap.cc
+--- a/src/dev/ethertap.cc
++++ b/src/dev/ethertap.cc
+@@ -61,6 +61,7 @@
+ #include <netinet/in.h>
+ #include <string.h>
+ #include <arpa/inet.h>
++#include <fcntl.h>
+ 
+ std::string uint64_to_string( uint64_t value );
+ uint64_t extractTick(char*);
+@@ -178,20 +179,10 @@
+ 
+ /**
+  */
+-class TapEvent : public PollEvent
+-{
+-  protected:
+-    EtherTap *tap;
+-
+-  public:
+-    TapEvent(EtherTap *_tap, int fd, int e)
+-        : PollEvent(fd, e), tap(_tap) {}
+-    virtual void process(int revent) { tap->process(revent); }
+-};
+ 
+ EtherTap::EtherTap(const Params *p)
+-    : EtherObject(p), event(NULL), socket(-1), buflen(p->bufsz), dump(p->dump),
+-      interface(NULL), noDelay(p->no_delay), txEvent(this)
++    : EtherObject(p), socket(-1), buflen(p->bufsz), dump(p->dump),
++      interface(NULL), noDelay(p->no_delay), txEvent(this), tapInEvent(this)
+ {
+     if (ListenSocket::allDisabled())
+         fatal("All listeners are disabled! EtherTap can't work!");
+@@ -204,8 +195,6 @@
+ 
+ EtherTap::~EtherTap()
+ {
+-    if (event)
+-        delete event;
+     if (buffer)
+         delete [] buffer;
+ 
+@@ -223,16 +212,19 @@
+     data_len = 0;
+     socket = fd;
+     DPRINTF(Ethernet, "EtherTap attached\n");
+-    event = new TapEvent(this, socket, POLLIN|POLLERR);
+-    pollQueue.schedule(event);
++    int nonBlocking = 1;
++    if ( fcntl( socket, F_SETFL, O_NONBLOCK, nonBlocking ) == -1 )
++    {
++            printf( "failed to set non-blocking socket\n" );
++            return;
++    }
++    schedule(tapInEvent, curTick() + 10000000);
+ }
+ 
+ void
+ EtherTap::detach()
+ {
+     DPRINTF(Ethernet, "EtherTap detached\n");
+-    delete event;
+-    event = 0;
+     close(socket);
+     socket = -1;
+ }
+@@ -293,21 +285,14 @@
+ {}
+ 
+ void
+-EtherTap::process(int revent)
++EtherTap::process()
+ {
+-    if (revent & POLLERR) {
+-        detach();
+-        return;
+-    }
+-
+     char *data = buffer + sizeof(uint32_t);
+-    if (!(revent & POLLIN))
+-        return;
+ 
+     if (buffer_offset < data_len + sizeof(uint32_t)) {
+         int len = read(socket, buffer + buffer_offset, buflen - buffer_offset);
+-        if (len == 0) {
+-            detach();
++        if (len <= 0) {
++            schedule(tapInEvent, curTick() + 1000000);
+             return;
+         }
+ 
+@@ -358,6 +343,7 @@
+                 dump->dump(packet);
+             }
+         }
++        schedule(tapInEvent, curTick() + 1000000);
+         return;
+     }
+     while (data_len != 0 && buffer_offset >= data_len + sizeof(uint32_t)) {
+@@ -385,6 +371,7 @@
+             dump->dump(packet);
+         }
+     }
++    schedule(tapInEvent, curTick() + 1000000);
+ }
+ 
+ void
+@@ -438,38 +425,18 @@
+     SERIALIZE_SCALAR(buffer_offset);
+     SERIALIZE_SCALAR(data_len);
+ 
+-    bool tapevent_present = false;
+-    if (event) {
+-        tapevent_present = true;
+-        SERIALIZE_SCALAR(tapevent_present);
+-        event->serialize(os);
+-    }
+-    else {
+-        SERIALIZE_SCALAR(tapevent_present);
+-    }
+ }
+ 
+ void
+ EtherTap::unserialize(Checkpoint *cp, const std::string &section)
+ {
+-    UNSERIALIZE_SCALAR(socket);
++    //UNSERIALIZE_SCALAR(socket);
+     UNSERIALIZE_SCALAR(buflen);
+     uint8_t *buffer = (uint8_t *)this->buffer;
+     UNSERIALIZE_ARRAY(buffer, buflen);
+     UNSERIALIZE_SCALAR(buffer_offset);
+     UNSERIALIZE_SCALAR(data_len);
+ 
+-    bool tapevent_present;
+-    UNSERIALIZE_SCALAR(tapevent_present);
+-    if (tapevent_present) {
+-        event = new TapEvent(this, socket, POLLIN|POLLERR);
+-
+-        event->unserialize(cp,section);
+-
+-        if (event->queued()) {
+-            pollQueue.schedule(event);
+-        }
+-    }
+ }
+ 
+ //=====================================================================
+diff --git a/src/dev/ethertap.hh b/src/dev/ethertap.hh
+--- a/src/dev/ethertap.hh
++++ b/src/dev/ethertap.hh
+@@ -48,7 +48,6 @@
+ #include <sstream>
+ #define TickDigits 12
+ 
+-class TapEvent;
+ class TapListener;
+ class EtherTapInt;
+ 
+@@ -58,8 +57,6 @@
+ class EtherTap : public EtherObject
+ {
+   protected:
+-    friend class TapEvent;
+-    TapEvent *event;
+     uint64_t Tick_int;
+     char buff[10000];
+     char SenderTick[TickDigits+1];
+@@ -85,7 +82,7 @@
+     EtherTapInt *interface;
+     bool noDelay;
+ 
+-    void process(int revent);
++    void process();
+     void enqueue(EthPacketData *packet);
+     void retransmit();
+ 
+@@ -105,6 +102,8 @@
+ 
+     friend class TxEvent;
+     TxEvent txEvent;
++    EventWrapper<EtherTap, &EtherTap::process> tapInEvent;
++
+ 
+   public:
+     typedef EtherTapParams Params;

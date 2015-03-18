@@ -1,0 +1,370 @@
+# HG changeset patch
+# Parent b06d57f40af4b9e6dae9c8d9365ef1876ecf1d24
+
+diff --git a/src/dev/Ethernet.py b/src/dev/Ethernet.py
+--- a/src/dev/Ethernet.py
++++ b/src/dev/Ethernet.py
+@@ -43,8 +43,18 @@
+     int1 = SlavePort("interface 1")
+     delay = Param.Latency('0us', "packet transmit delay")
+     delay_var = Param.Latency('0ns', "packet transmit delay variability")
+-    speed = Param.NetworkBandwidth('1Gbps', "link speed")
+     dump = Param.EtherDump(NULL, "dump object")
++    tcp_speed = Param.NetworkBandwidth('1Gbps', "tcp traffic speed ")
++    udp_speed = Param.NetworkBandwidth('1Gbps', "udp traffic speed ")
++    no_ip_speed = Param.NetworkBandwidth('1Gbps', "no ip traffic speed ")
++    tcp_retry_speed = Param.NetworkBandwidth('1Gbps', "tcp processing speed ")
++    udp_retry_speed = Param.NetworkBandwidth('1Gbps', "udp processing speed ")
++    no_ip_retry_speed = Param.NetworkBandwidth('1Gbps', "no ip processing speed ")
++    tcp_process_speed = Param.NetworkBandwidth('1Gbps', "no ip processing speed ")
++    tcp_jmp_delay0 = Param.Latency('0us', "packet transmit delay for tcp packets: tcp_jmp_size0< pkt_size <tcp_jmp_size1")
++    tcp_jmp_delay1 = Param.Latency('0us', "packet transmit delay for tcp packets: tcp_jmp_size1< pkt_size")
++    tcp_jmp_size0 = Param.Int(131,"latency jump point 0")
++    tcp_jmp_size1 = Param.Int(323,"latency jump point 1")
+ 
+ class EtherBus(EtherObject):
+     type = 'EtherBus'
+diff --git a/src/dev/etherlink.cc b/src/dev/etherlink.cc
+--- a/src/dev/etherlink.cc
++++ b/src/dev/etherlink.cc
+@@ -51,16 +51,27 @@
+ #include "sim/core.hh"
+ #include "sim/serialize.hh"
+ #include "sim/system.hh"
++#include "dev/i8254xGBe_defs.hh"
++#include "base/inet.hh"
+ 
+ using namespace std;
++using namespace Net;
+ 
+ EtherLink::EtherLink(const Params *p)
+     : EtherObject(p)
+ {
+-    link[0] = new Link(name() + ".link0", this, 0, p->speed,
+-                       p->delay, p->delay_var, p->dump);
+-    link[1] = new Link(name() + ".link1", this, 1, p->speed,
+-                       p->delay, p->delay_var, p->dump);
++    link[0] = new Link(name() + ".link0", this, 0,
++                       p->delay, p->delay_var, p->dump,
++                       p->tcp_speed, p->udp_speed, p->no_ip_speed,
++                       p->tcp_retry_speed, p->udp_retry_speed, p->no_ip_retry_speed, p->tcp_process_speed,
++                       p->tcp_jmp_delay0, p->tcp_jmp_delay1, p->tcp_jmp_size0, p->tcp_jmp_size1
++                        );
++    link[1] = new Link(name() + ".link1", this, 1,
++                       p->delay, p->delay_var, p->dump,
++                       p->tcp_speed, p->udp_speed, p->no_ip_speed,
++                       p->tcp_retry_speed, p->udp_retry_speed, p->no_ip_retry_speed, p->tcp_process_speed,
++                       p->tcp_jmp_delay0, p->tcp_jmp_delay1, p->tcp_jmp_size0, p->tcp_jmp_size1
++                        );
+ 
+     interface[0] = new Interface(name() + ".int0", link[0], link[1]);
+     interface[1] = new Interface(name() + ".int1", link[1], link[0]);
+@@ -100,9 +111,18 @@
+ }
+ 
+ EtherLink::Link::Link(const string &name, EtherObject *p, int num,
+-                      double rate, Tick delay, Tick delay_var, EtherDump *d)
++                      Tick delay, Tick delay_var, EtherDump *d,
++                      double rateTCP, double rateUDP, double rateNoIP,
++                      double rateRetryTCP, double rateRetryUDP,
++                      double rateRetryNoIP, double rateProcessTCP,
++                      Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1)
+     : objName(name), parent(p), number(num), txint(NULL), rxint(NULL),
+-      ticksPerByte(rate), linkDelay(delay), delayVar(delay_var), dump(d),
++      ticksPerByteTCP(rateTCP),ticksPerByteUDP(rateUDP),ticksPerByteNoIP(rateNoIP),
++      ticksPerByteRetryTCP(rateRetryTCP),ticksPerByteRetryUDP(rateRetryUDP),
++      ticksPerByteRetryNoIP(rateRetryNoIP),ticksPerByteProcessTCP(rateProcessTCP),
++      linkDelay(delay), delayVar(delay_var), dump(d),
++      linkDelayJmp0(DelayJmp0),linkDelayJmp1(DelayJmp1),preScheduleTick(0),retryTick(0),
++      releaseTick(0),DelayJmpPoint0(SizeJmp0),DelayJmpPoint1(SizeJmp1),
+       doneEvent(this)
+ { }
+ 
+@@ -155,13 +175,130 @@
+     if (dump)
+         dump->dump(packet);
+ 
+-    if (linkDelay > 0) {
+-        DPRINTF(Ethernet, "packet delayed: delay=%d\n", linkDelay);
+-        Event *event = new LinkDelayEvent(this, packet);
+-        parent->schedule(event, curTick() + linkDelay);
+-    } else {
+-        txComplete(packet);
++    txComplete(packet);
++
++    packet = 0;
++    assert(!busy());
++
++    txint->sendDone();
++}
++
++void
++EtherLink::Link::txDone(Tick sTick)
++{
++    if (dump)
++        dump->dump(packet);
++
++    Tick delay;
++    bool flag = true;
++    delay = linkDelay;
++    IpPtr ip(packet);
++    if (ip) {
++        DPRINTF(Ethernet, "Proccesing Ip packet with Id=%d\n", ip->id());
++
++        TcpPtr tcp(ip);
++
++        if (tcp) {
++            DPRINTF(Ethernet, "Scheduling TCP packet\n");
++            delay += (Tick)ceil(((double)packet->length * ticksPerByteTCP) + 1.0);
++
++            if (packet->length < DelayJmpPoint0)
++                delay += 0; //linkDelay is sufficient
++
++            else if (packet->length < DelayJmpPoint1)
++                delay += linkDelayJmp0; //first delay jump
++
++            else
++                delay += linkDelayJmp1; //second delay jump
++
++            scheduleTick = sTick + delay;
++
++            //causality check
++            if (scheduleTick < curTick()){
++                DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
++                scheduleTick = curTick();
++            }
++
++            //in-order retirement check
++            if (scheduleTick < (preScheduleTick + retryTick))
++                scheduleTick = preScheduleTick + retryTick;
++
++            nextRetryTick = (Tick)ceil(((double)packet->length * ticksPerByteRetryTCP) + 1.0);
++            flag = false;
++            releaseTick = scheduleTick - delay + (Tick)ceil(((double)packet->length * ticksPerByteProcessTCP) + 1.0);
++        }
++
++        UdpPtr udp(ip);
++        if (udp && flag) {
++            DPRINTF(Ethernet, "Scheduling UDP packet\n");
++            delay += (Tick)ceil(((double)packet->length * ticksPerByteUDP) + 1.0);
++
++            scheduleTick = sTick + delay;
++
++            //causality check
++            if (scheduleTick < curTick()){
++                DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
++                scheduleTick = curTick();
++            }
++
++            //in-order retirement check
++            if (scheduleTick < (preScheduleTick + retryTick))
++                scheduleTick = preScheduleTick + retryTick;
++
++            nextRetryTick = (Tick)ceil(((double)packet->length * ticksPerByteRetryUDP) + 1.0);
++            flag = false;
++            releaseTick = scheduleTick - delay;
++
++        }
++
++       if (flag) {
++            // we treat IP packets like no ip packets!
++            delay += (Tick)ceil(((double)packet->length * ticksPerByteNoIP) + 1.0);
++
++            scheduleTick = sTick + delay;
++
++            //causality check
++            if (scheduleTick < curTick()){
++                DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
++                scheduleTick = curTick();
++            }
++
++            //in-order retirement check
++            if (scheduleTick < (preScheduleTick + retryTick))
++                scheduleTick = preScheduleTick + retryTick;
++
++            nextRetryTick = (Tick)ceil(((double)packet->length * ticksPerByteRetryNoIP) + 1.0);
++            releaseTick = scheduleTick - delay;
++
++       }
++    } else { // if ip
++        DPRINTF(Ethernet, "Scheduling Non-Ip packet\n");
++        delay += (Tick)ceil(((double)packet->length * ticksPerByteNoIP) + 1.0);
++
++        scheduleTick = sTick + delay;
++
++        //causality check
++        if (scheduleTick < curTick()){
++            DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
++            scheduleTick = curTick();
++        }
++
++        //in-order retirement check
++        if (scheduleTick < (preScheduleTick + retryTick))
++            scheduleTick = preScheduleTick + retryTick;
++
++        nextRetryTick = (Tick)ceil(((double)packet->length * ticksPerByteRetryNoIP) + 1.0);
++        releaseTick = scheduleTick - delay;
++
+     }
++    DPRINTF(Ethernet, "scheduling packet at:%lu , delay=%lu\n",scheduleTick,delay);
++    DPRINTF(Ethernet, "rates {tcp,udp,noIp}=|%f|%f|%f|), delays {base,tcp0,tcp1}=|%lu|%lu|%lu|, {jmp0,jmp1}=|%d|%d|\n"
++                ,ticksPerByteTCP,ticksPerByteUDP,ticksPerByteNoIP,linkDelay,linkDelayJmp0,linkDelayJmp1,DelayJmpPoint0,DelayJmpPoint1);
++
++    preScheduleTick = scheduleTick;
++    retryTick = nextRetryTick;
++    Event *event = new LinkDelayEvent(this, packet);
++    parent->schedule(event, scheduleTick);
+ 
+     packet = 0;
+     assert(!busy());
+@@ -174,23 +311,21 @@
+ bool
+ EtherLink::Link::transmit(EthPacketPtr pkt, Tick sTick_)
+ {
++    Tick sTick = sTick_;
+     if (busy()) {
+         DPRINTF(Ethernet, "packet not sent, link busy\n");
+         return false;
+     }
+-
+     DPRINTF(Ethernet, "packet sent: len=%d\n", pkt->length);
+     DDUMP(EthernetData, pkt->data, pkt->length);
+ 
+     packet = pkt;
+-    Tick delay = (Tick)ceil(((double)pkt->length * ticksPerByte) + 1.0);
+-    if (delayVar != 0)
+-        delay += random_mt.random<Tick>(0, delayVar);
+ 
+-    DPRINTF(Ethernet, "scheduling packet: delay=%d, (rate=%f)\n",
+-            delay, ticksPerByte);
+-    parent->schedule(doneEvent, curTick() + delay);
+-
++    DPRINTF(Ethernet, "received packet from ethertap device: len=%d, sTick=%lu\n"
++                , pkt->length,sTick_);
++    if (sTick < releaseTick)
++        sTick = releaseTick;
++    txDone(sTick);
+     return true;
+ }
+ 
+@@ -202,16 +337,49 @@
+         return false;
+     }
+ 
+-    DPRINTF(Ethernet, "packet sent: len=%d\n", pkt->length);
++    DPRINTF(Ethernet, "received packet from !ethertap device: len=%d\n"
++                , pkt->length);
+     DDUMP(EthernetData, pkt->data, pkt->length);
+ 
+     packet = pkt;
+-    Tick delay = (Tick)ceil(((double)pkt->length * ticksPerByte) + 1.0);
++    Tick delay = 0;
++    bool flag = true;
++
++    IpPtr ip(pkt);
++    if (ip) {
++        DPRINTF(Ethernet, "Proccesing Ip packet with Id=%d\n", ip->id());
++
++        TcpPtr tcp(ip);
++        if (tcp) {
++            DPRINTF(Ethernet, "Scheduling TCP packet\n");
++
++            delay = (Tick)ceil(((double)pkt->length * ticksPerByteRetryTCP) + 1.0);
++            flag = false;
++        }
++
++        UdpPtr udp(ip);
++        if (udp && flag) {
++            DPRINTF(Ethernet, "Scheduling UDP packet\n");
++
++            delay = (Tick)ceil(((double)pkt->length * ticksPerByteRetryUDP) + 1.0);
++        }
++
++        if (flag){
++            //we tread ip packets like no-ip packets
++
++            delay = (Tick)ceil(((double)pkt->length * ticksPerByteRetryNoIP) + 1.0);
++        }
++    } else { // if ip
++        DPRINTF(Ethernet, "Scheduling Non-Ip packet\n");
++
++        delay = (Tick)ceil(((double)pkt->length * ticksPerByteRetryNoIP) + 1.0);
++    }
++
+     if (delayVar != 0)
+         delay += random_mt.random<Tick>(0, delayVar);
+ 
+-    DPRINTF(Ethernet, "scheduling packet: delay=%d, (rate=%f)\n",
+-            delay, ticksPerByte);
++    DPRINTF(Ethernet, "scheduling packet: delay=%d, (rate {tcp,udp,noIp}=%f,%f,%f)\n",
++            delay, ticksPerByteRetryTCP,ticksPerByteRetryUDP,ticksPerByteRetryNoIP);
+     parent->schedule(doneEvent, curTick() + delay);
+ 
+     return true;
+diff --git a/src/dev/etherlink.hh b/src/dev/etherlink.hh
+--- a/src/dev/etherlink.hh
++++ b/src/dev/etherlink.hh
+@@ -70,10 +70,25 @@
+         EtherInt *txint;
+         EtherInt *rxint;
+ 
+-        double ticksPerByte;
++        double ticksPerByteTCP;
++        double ticksPerByteUDP;
++        double ticksPerByteNoIP;
++        double ticksPerByteRetryTCP;
++        double ticksPerByteRetryUDP;
++        double ticksPerByteRetryNoIP;
++        double ticksPerByteProcessTCP;
+         Tick linkDelay;
+         Tick delayVar;
+         EtherDump *dump;
++        Tick linkDelayJmp0;
++        Tick linkDelayJmp1;
++        Tick preScheduleTick;
++        Tick scheduleTick;
++        Tick retryTick;
++        Tick nextRetryTick;
++        Tick releaseTick;
++        int DelayJmpPoint0;
++        int DelayJmpPoint1;
+ 
+       protected:
+         /*
+@@ -81,6 +96,7 @@
+          */
+         EthPacketPtr packet;
+         void txDone();
++        void txDone(Tick sTick); //for packets which we get from tap device
+         typedef EventWrapper<Link, &Link::txDone> DoneEvent;
+         friend void DoneEvent::process();
+         DoneEvent doneEvent;
+@@ -90,7 +106,10 @@
+ 
+       public:
+         Link(const std::string &name, EtherObject *p, int num,
+-             double rate, Tick delay, Tick delay_var, EtherDump *dump);
++             Tick delay, Tick delay_var, EtherDump *dump,
++             double rateTCP, double rateUDP, double rateNoIP,
++             double rateRetryTCP, double rateRetryUDP, double rateRetryNoIP, double rateProcessTCP,
++             Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1);
+         ~Link() {}
+ 
+         const std::string name() const { return objName; }
+diff --git a/src/dev/etherswitch.cc b/src/dev/etherswitch.cc
+--- a/src/dev/etherswitch.cc
++++ b/src/dev/etherswitch.cc
+@@ -204,10 +204,11 @@
+             std::string linkName = csprintf("%s.link%d", name(), linkNum);
+             EtherLink::Link *link = new EtherLink::Link(linkName,
+                                               &etherSwitch,
+-                                              linkNum, ticksPerByte,
++                                              linkNum,
+                                               etherSwitch.params()->delay,
+                                               etherSwitch.params()->delay_var,
+-                                              etherSwitch.params()->dump);
++                                              etherSwitch.params()->dump,
++                                              0,0,0,0,0,0,0,0,0,1515,1515);
+             link->setTxInt(itr1);
+             link->setRxInt(itr2);
+             std::pair<Interface*, Interface*> intPair

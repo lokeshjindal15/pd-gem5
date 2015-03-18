@@ -1,0 +1,15 @@
+# HG changeset patch
+# Parent e0eab2db006786af86d9cc6b9239a4f26e9a69f6
+
+diff --git a/src/sim/simulate.cc b/src/sim/simulate.cc
+--- a/src/sim/simulate.cc
++++ b/src/sim/simulate.cc
+@@ -98,7 +98,7 @@
+         threads_initialized = true;
+     }
+ 
+-    inform("Entering event queue @ %d.  Starting simulation...\n", curTick());
++    //inform("Entering event queue @ %d.  Starting simulation...\n", curTick());
+ 
+     if (num_cycles < MaxTick - curTick())
+         num_cycles = curTick() + num_cycles;

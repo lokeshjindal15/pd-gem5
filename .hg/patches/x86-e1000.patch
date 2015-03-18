@@ -1,0 +1,50 @@
+exporting patch:
+# HG changeset patch
+# User Jiuyue Ma <majiuyue@ncic.ac.cn>
+# Date 1405642428 -28800
+# Node ID c7699d32ece67c116a66335005d67ccd26ea5006
+# Parent  698df4b685ddd1433412c56e9bddd6e21520d583
+config, x86: add ethernet support for x86 fullsystem
+
+This patch add a IGbE_e1000 ethernet device to x86 fs system, it does
+the followings:
+1) add IGbE_e1000 to x86_sys.pc.ethernet,
+2) connect x86_sys.pc.ethernet.pio/config/dma to x86_sys.iobus,
+3) add interrupt assignment for x86_sys.pc.ethernet in MP table.
+
+diff -r 698df4b685dd -r c7699d32ece6 configs/common/FSConfig.py
+--- a/configs/common/FSConfig.py	Thu Jul 17 12:05:41 2014 +0800
++++ b/configs/common/FSConfig.py	Fri Jul 18 08:13:48 2014 +0800
+@@ -424,6 +424,15 @@
+     disk2.childImage(disk('linux-bigswap2.img'))
+     self.pc.south_bridge.ide.disks = [disk0, disk2]
+ 
++    # Ethernet
++    #  - connect to PCI bus (bus_id=0)
++    #  - connect to I/O APIC use INT-A (InterruptPin=1)
++    self.pc.ethernet = IGbE_e1000(pci_bus=0, pci_dev=2, pci_func=0,
++                                  InterruptLine=10, InterruptPin=1)
++    self.pc.ethernet.pio = self.iobus.master
++    self.pc.ethernet.config = self.iobus.master
++    self.pc.ethernet.dma = self.iobus.slave
++
+     # Add in a Bios information structure.
+     structures = [X86SMBiosBiosInformation()]
+     self.smbios_table.structures = structures
+@@ -464,6 +473,16 @@
+             dest_io_apic_id = io_apic.id,
+             dest_io_apic_intin = 16)
+     base_entries.append(pci_dev4_inta)
++    # Interrupt assignment for IGbE_e1000 (bus=0,dev=2,fun=0)
++    pci_dev2_inta = X86IntelMPIOIntAssignment(
++            interrupt_type = 'INT',
++            polarity = 'ConformPolarity',
++            trigger = 'ConformTrigger',
++            source_bus_id = 0,
++            source_bus_irq = 0 + (2 << 2),
++            dest_io_apic_id = io_apic.id,
++            dest_io_apic_intin = 10)
++    base_entries.append(pci_dev2_inta)
+     def assignISAInt(irq, apicPin):
+         assign_8259_to_apic = X86IntelMPIOIntAssignment(
+                 interrupt_type = 'ExtInt',
