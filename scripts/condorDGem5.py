@@ -124,12 +124,12 @@ def start_gem5(m,run_dir,a,cmd):
 def start_socat(sw_tap_port,ip,gem5_tap_port):
 
     if int(params['num_nodes']) == 2:
-	cmd = 'socat tcp:' + a_to_m['tux0'] + ':' + sw_tap_port + ',nodelay,priority=6'\
+	cmd = params['socat_binary'] + ' tcp:' + a_to_m['tux0'] + ':' + sw_tap_port + ',nodelay,priority=6'\
 		+ ' tcp:' +a_to_m['tux1'] + ':' + gem5_tap_port + ',nodelay,priority=6'
 	os.system(cmd)
 
     else:
-	cmd = 'socat tcp:' + params['sw_host'] + ':' + sw_tap_port + ',nodelay,priority=6'\
+	cmd = params['socat_binary'] + ' tcp:' + params['sw_host'] + ':' + sw_tap_port + ',nodelay,priority=6'\
                 + ' tcp:' + ip + ':' + gem5_tap_port + ',nodelay,priority=6'
 	os.system(cmd)
 
@@ -371,7 +371,7 @@ for machine in machines:
 	print sw_tap_ports
 	print sw_ip
         if int(params['num_nodes']) > 2 and itr < int(params['disconnected_node']):
-		cmd_socat = 'socat tcp:' + tux_ip[a] + ':' + tap_port[a] + ',nodelay,priority=6'\
+		cmd_socat = params['socat_binary'] +' tcp:' + tux_ip[a] + ':' + tap_port[a] + ',nodelay,priority=6'\
                 + ' tcp:' +sw_ip + ':' + sw_tap_ports[a] + ',nodelay,priority=6 &'
 		os.system(cmd_socat)
 	itr +=1
@@ -383,7 +383,7 @@ file_log.close()
 
 file_log.close()
 if int(params['num_nodes']) == 2:
-	cmd_socat = 'socat tcp:' + tux_ip['tux0'] + ':' + tap_port['tux0'] + ',nodelay,priority=6'\
+	cmd_socat = params['socat_binary'] + ' tcp:' + tux_ip['tux0'] + ':' + tap_port['tux0'] + ',nodelay,priority=6'\
                 + ' tcp:' +tux_ip['tux1'] + ':' + tap_port['tux1'] + ',nodelay,priority=6 &'
         os.system(cmd_socat)
 
