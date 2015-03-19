@@ -1,0 +1,5 @@
+1-ssh to a condor machine
+2-modify config.ini
+3-launch simulation: 
+python condorDGem5.py config.ini
+...

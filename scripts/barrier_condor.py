@@ -51,17 +51,11 @@ except (KeyboardInterrupt, SystemExit):
     cleanup_stop_thread();
     sys.exit()
 
-checkpoint = 0
 
 while 1:
-	checkpoint = 0;
 	for i in other_sock:
-		if(c_list[i].recv(BUFFER_SIZE) == "C")
-			checkpoint = 1
+		c_list[i].recv(BUFFER_SIZE)
         for i in other_sock:
-		if checkpoint == 1:
-                	c_list[i].send('C')
-		else:
-                	c_list[i].send('R')
+                c_list[i].send('R')
 
 conn.close()
