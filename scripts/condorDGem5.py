@@ -275,21 +275,26 @@ itr = 0
 for machine in machines:
     (m,a) = machine.split(':')
     a_to_m[a] = m
-    if (a == "tux0"):
-        cmd += '--script=' + params['script_tux0'] + ' '
-    else:
-        cmd += '--script=' + params['script_dir'] + '/'+ a + '.sh' + ' '
         
     if ( a == "tux0" and params['trace_on_tux0'] == '1' ) or ( a=="tux1" and params['trace_on_tux1'] == '1') or ( a=="tux2" and params['trace_on_tux2'] == '1') or (params['trace_on_all'] == '1'):
         cmd_tux[a] = cmd_debug + cmd + '--checkpoint-dir=' + params['cpt_dir'] + '/' + a + ' ' \
         '--sync-host=' + sync_host_ip + ' ' \
         '--mac=00:90:00:00:00:0' + str(itr) + ' ' \
 	'--tap-port=3500 '
+        if (a == tux0):
+            cmd_tux[a] += '--script=' + params['script_tux0'] + ' '
+        else:
+            cmd_tux[a] += '--script=' + params['script_dir'] + '/'+ a + '.sh' + ' '
     else:
         cmd_tux[a] = cmd_nodebug + cmd + '--checkpoint-dir=' + params['cpt_dir'] + '/' + a + ' ' \
         '--sync-host=' + sync_host_ip + ' ' \
         '--mac=00:90:00:00:00:0' + str(itr) + ' ' \
 	'--tap-port=3500 '
+	if (a == tux0):
+	    cmd_tux[a] += '--script=' + params['script_tux0'] + ' '
+	else:
+	    cmd_tux[a] += '--script=' + params['script_dir'] + '/'+ a + '.sh' + ' '
+
     cmd_tux[a] += '--disk-image=' + params['disk_image_dir'] +'/' + a + '.img '
     if(params['udp'] == '1'):
 	if ( a != "tux0" ):
