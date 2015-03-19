@@ -278,7 +278,7 @@ for machine in machines:
     if (a == "tux0"):
         cmd += '--script=' + params['script_tux0'] + ' '
     else:
-        cmd += '--script=' + params['script_others'] + ' '
+        cmd += '--script=' + params['script_dir'] + '/'+ a + '.sh' + ' '
         
     if ( a == "tux0" and params['trace_on_tux0'] == '1' ) or ( a=="tux1" and params['trace_on_tux1'] == '1') or ( a=="tux2" and params['trace_on_tux2'] == '1') or (params['trace_on_all'] == '1'):
         cmd_tux[a] = cmd_debug + cmd + '--checkpoint-dir=' + params['cpt_dir'] + '/' + a + ' ' \
