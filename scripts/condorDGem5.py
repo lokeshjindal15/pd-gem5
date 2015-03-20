@@ -285,7 +285,7 @@ for machine in machines:
         '--sync-host=' + sync_host_ip + ' ' \
         '--mac=00:90:00:00:00:0' + str(itr) + ' ' \
 	'--tap-port=3500 '
-        if (a == tux0):
+        if (a == "tux0"):
             cmd_tux[a] += '--script=' + params['script_tux0'] + ' '
         else:
             cmd_tux[a] += '--script=' + params['script_dir'] + '/'+ a + '.sh' + ' '
@@ -294,7 +294,7 @@ for machine in machines:
         '--sync-host=' + sync_host_ip + ' ' \
         '--mac=00:90:00:00:00:0' + str(itr) + ' ' \
 	'--tap-port=3500 '
-	if (a == tux0):
+	if (a == "tux0"):
 	    cmd_tux[a] += '--script=' + params['script_tux0'] + ' '
 	else:
 	    cmd_tux[a] += '--script=' + params['script_dir'] + '/'+ a + '.sh' + ' '
