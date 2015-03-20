@@ -151,12 +151,16 @@ run_dir= params['run_dir'] + '/'+ params['config']
 os.system("rm -rf %s" % (run_dir))
 os.system("mkdir %s > /dev/null" %(run_dir))
 os.system("mkdir %s/switch > /dev/null" %(run_dir))
+os.system("mkdir %s > /dev/null" %(params['cpt_dir']))
+os.system("mkdir %s/switch > /dev/null" %(params['cpt_dir']))
+
 #copy config file
 os.system("cp %s %s"%(configFile,run_dir))
 
 for machine in machines:
     (m,a) = machine.split(':')
     os.system("mkdir %s/%s > /dev/null" %(run_dir,a))
+    os.system("mkdir %s/%s > /dev/null" %(params['cpt_dir'],a))
 
 cmd_debug = params['gem5_binary'] + ' ' + \
         '--debug-flags=' + params['debug_flags'] + ' '
