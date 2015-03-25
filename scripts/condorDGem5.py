@@ -337,7 +337,7 @@ while True:
 		else:
 			time.sleep(10)
 
-time.sleep(30)
+time.sleep(60)
 print ' \n'
 f = file(run_dir+'/switch/gem5sim.out')
 
