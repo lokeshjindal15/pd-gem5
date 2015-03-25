@@ -1,0 +1,106 @@
+cpufrequtils 007: cpufreq-info (C) Dominik Brodowski 2004-2009
+Report errors and bugs to cpufreq@vger.kernel.org, please.
+analyzing CPU 0:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 0
+  CPUs which need to have their frequency coordinated by software: 0
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 800 MHz.
+  cpufreq stats: 3.10 GHz:7.22%, 3.10 GHz:0.11%, 2.90 GHz:0.09%, 2.80 GHz:0.18%, 2.60 GHz:0.14%, 2.40 GHz:0.08%, 2.30 GHz:0.19%, 2.10 GHz:0.22%, 1.90 GHz:0.13%, 1.80 GHz:0.40%, 1.60 GHz:0.24%, 1.50 GHz:0.62%, 1.30 GHz:0.57%, 1.10 GHz:0.33%, 1000 MHz:1.03%, 800 MHz:88.43%  (4458493)
+analyzing CPU 1:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 1
+  CPUs which need to have their frequency coordinated by software: 1
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 800 MHz.
+  cpufreq stats: 3.10 GHz:11.47%, 3.10 GHz:0.20%, 2.90 GHz:0.13%, 2.80 GHz:0.21%, 2.60 GHz:0.15%, 2.40 GHz:0.08%, 2.30 GHz:0.17%, 2.10 GHz:0.16%, 1.90 GHz:0.09%, 1.80 GHz:0.24%, 1.60 GHz:0.12%, 1.50 GHz:0.31%, 1.30 GHz:0.36%, 1.10 GHz:0.23%, 1000 MHz:0.71%, 800 MHz:85.37%  (3728672)
+analyzing CPU 2:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 2
+  CPUs which need to have their frequency coordinated by software: 2
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 800 MHz.
+  cpufreq stats: 3.10 GHz:9.27%, 3.10 GHz:0.17%, 2.90 GHz:0.14%, 2.80 GHz:0.23%, 2.60 GHz:0.16%, 2.40 GHz:0.08%, 2.30 GHz:0.17%, 2.10 GHz:0.15%, 1.90 GHz:0.08%, 1.80 GHz:0.22%, 1.60 GHz:0.11%, 1.50 GHz:0.30%, 1.30 GHz:0.35%, 1.10 GHz:0.23%, 1000 MHz:0.70%, 800 MHz:87.64%  (3610631)
+analyzing CPU 3:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 3
+  CPUs which need to have their frequency coordinated by software: 3
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 3.10 GHz.
+  cpufreq stats: 3.10 GHz:9.60%, 3.10 GHz:0.18%, 2.90 GHz:0.14%, 2.80 GHz:0.26%, 2.60 GHz:0.18%, 2.40 GHz:0.09%, 2.30 GHz:0.17%, 2.10 GHz:0.16%, 1.90 GHz:0.08%, 1.80 GHz:0.23%, 1.60 GHz:0.11%, 1.50 GHz:0.29%, 1.30 GHz:0.34%, 1.10 GHz:0.23%, 1000 MHz:0.69%, 800 MHz:87.26%  (3463571)
+analyzing CPU 4:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 4
+  CPUs which need to have their frequency coordinated by software: 4
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 800 MHz.
+  cpufreq stats: 3.10 GHz:5.81%, 3.10 GHz:0.36%, 2.90 GHz:0.12%, 2.80 GHz:0.10%, 2.60 GHz:0.10%, 2.40 GHz:0.05%, 2.30 GHz:0.13%, 2.10 GHz:0.17%, 1.90 GHz:0.07%, 1.80 GHz:0.21%, 1.60 GHz:0.11%, 1.50 GHz:0.28%, 1.30 GHz:0.28%, 1.10 GHz:0.18%, 1000 MHz:0.57%, 800 MHz:91.47%  (6429024)
+analyzing CPU 5:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 5
+  CPUs which need to have their frequency coordinated by software: 5
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 800 MHz.
+  cpufreq stats: 3.10 GHz:5.50%, 3.10 GHz:0.07%, 2.90 GHz:0.06%, 2.80 GHz:0.09%, 2.60 GHz:0.05%, 2.40 GHz:0.02%, 2.30 GHz:0.06%, 2.10 GHz:0.06%, 1.90 GHz:0.03%, 1.80 GHz:0.09%, 1.60 GHz:0.05%, 1.50 GHz:0.12%, 1.30 GHz:0.14%, 1.10 GHz:0.10%, 1000 MHz:0.38%, 800 MHz:93.19%  (2242308)
+analyzing CPU 6:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 6
+  CPUs which need to have their frequency coordinated by software: 6
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 800 MHz.
+  cpufreq stats: 3.10 GHz:3.82%, 3.10 GHz:0.06%, 2.90 GHz:0.05%, 2.80 GHz:0.09%, 2.60 GHz:0.06%, 2.40 GHz:0.04%, 2.30 GHz:0.06%, 2.10 GHz:0.06%, 1.90 GHz:0.03%, 1.80 GHz:0.09%, 1.60 GHz:0.05%, 1.50 GHz:0.12%, 1.30 GHz:0.14%, 1.10 GHz:0.09%, 1000 MHz:0.33%, 800 MHz:94.90%  (1416643)
+analyzing CPU 7:
+  driver: acpi-cpufreq
+  CPUs which run at the same hardware frequency: 7
+  CPUs which need to have their frequency coordinated by software: 7
+  maximum transition latency: 10.0 us.
+  hardware limits: 800 MHz - 3.10 GHz
+  available frequency steps: 3.10 GHz, 3.10 GHz, 2.90 GHz, 2.80 GHz, 2.60 GHz, 2.40 GHz, 2.30 GHz, 2.10 GHz, 1.90 GHz, 1.80 GHz, 1.60 GHz, 1.50 GHz, 1.30 GHz, 1.10 GHz, 1000 MHz, 800 MHz
+  available cpufreq governors: conservative, ondemand, userspace, powersave, performance
+  current policy: frequency should be within 800 MHz and 3.10 GHz.
+                  The governor "ondemand" may decide which speed to use
+                  within this range.
+  current CPU frequency is 800 MHz.
+  cpufreq stats: 3.10 GHz:5.32%, 3.10 GHz:0.09%, 2.90 GHz:0.07%, 2.80 GHz:0.12%, 2.60 GHz:0.08%, 2.40 GHz:0.05%, 2.30 GHz:0.08%, 2.10 GHz:0.08%, 1.90 GHz:0.04%, 1.80 GHz:0.11%, 1.60 GHz:0.06%, 1.50 GHz:0.13%, 1.30 GHz:0.16%, 1.10 GHz:0.11%, 1000 MHz:0.44%, 800 MHz:93.04%  (1309814)
