@@ -21,7 +21,7 @@ for i in range(0,NumOfNodes):
     print "gem5 " + str(i) + "connected."
 
 os.system('echo 1 > ' + sys.argv[4])
-time.sleep(50)
+time.sleep(100)
 print "Sync Started ...!"
 
 

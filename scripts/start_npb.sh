@@ -35,7 +35,7 @@
 # Tips:
 # 1. If restoring from a previous ckpt created using this script and 
 # want to create a second ckpt using this script,
-# make sure you rename RUNSCRIPT_VAR to a different variable that was not defined
+# make sure you rename RUNSCRIPT_VAR_START_NPB to a different variable that was not defined
 # in the script used to create the first ckpt.
 # 2. make sure to check what to use
 # /bin/bash for ARM based disk image
@@ -47,13 +47,13 @@
 #################################################################################
 
 echo "I am inside create_arm_ckpt_hadoop.sh!"
-# Test if the RUNSCRIPT_VAR environment variable is already set
+# Test if the RUNSCRIPT_VAR_START_NPB environment variable is already set
 echo "Test m5"
-if [ "${RUNSCRIPT_VAR+set}" != set ]
+if [ "${RUNSCRIPT_VAR_START_NPB+set}" != set ]
 then
 	# Signal our future self that it's safe to continue
-	echo "RUNSCRIPT_VAR not set! So setting it and taking checkpoint!"
-	export RUNSCRIPT_VAR=1
+	echo "RUNSCRIPT_VAR_START_NPB not set! So setting it and taking checkpoint!"
+	export RUNSCRIPT_VAR_START_NPB=1
 else
 	# We've already executed once, so we should exit
 	echo "calling m5 exit!"
@@ -67,48 +67,51 @@ fi
  
 #busybox sleep 600
 echo "Acting after boot/restoring from primary ckpt"
-echo "1. RUNSCRIPT_VAR is $RUNSCRIPT_VAR"
+echo "1. RUNSCRIPT_VAR_START_NPB is $RUNSCRIPT_VAR_START_NPB"
 
 ifconfig eth0 10.0.0.2
 ifconfig lo up
 ifconfig eth0 hw ether 00:90:00:00:00:01
 
-export JAVA_HOME=/root/jdk1.7.0_60
-export HADOOP_HOME=/root/hadoop-1.0.2
-export HIVE_HOME=/root/apache-hive-0.13.1-bin
-export MAHOUT_HOME=/root/mahout-distribution-0.6
+echo "Taking simulation checkpoint..."
+/sbin/m5 checkpoint 0 0
 
-$HADOOP_HOME/bin/hadoop namenode -format <<< $"Y"
-
-echo "start dfs"
-$HADOOP_HOME/bin/start-dfs.sh
-echo "dfs started"
-
-sleep 10
-
-echo "start mapred"
-$HADOOP_HOME/bin/start-mapred.sh
-echo "mapred started"
-
-# wait 5 min for hadoop to brings up
-# you might want to wait more...
-sleep 200
-# You can periodically dump and check after every sleep 100
-echo "1. SKIPPING Dumping tux0 namenode log now..."
+#export JAVA_HOME=/root/jdk1.7.0_60
+#export HADOOP_HOME=/root/hadoop-1.0.2
+#export HIVE_HOME=/root/apache-hive-0.13.1-bin
+#export MAHOUT_HOME=/root/mahout-distribution-0.6
+#
+#$HADOOP_HOME/bin/hadoop namenode -format <<< $"Y"
+#
+#echo "start dfs"
+#$HADOOP_HOME/bin/start-dfs.sh
+#echo "dfs started"
+#
+#sleep 10
+#
+#echo "start mapred"
+#$HADOOP_HOME/bin/start-mapred.sh
+#echo "mapred started"
+#
+## wait 5 min for hadoop to brings up
+## you might want to wait more...
+#sleep 200
+## You can periodically dump and check after every sleep 100
+#echo "1. SKIPPING Dumping tux0 namenode log now..."
+##echo "************************************************************************"
+##cat root/hadoop-1.0.2/logs/hadoop-root-namenode-tux0.log
+##echo "************************************************************************"
+#echo "1. Checkpointing simulation..."
+#/sbin/m5 checkpoint 0 0
+#
+#sleep 200
+#echo "2. Dumping tux0 namenode log now..."
 #echo "************************************************************************"
 #cat root/hadoop-1.0.2/logs/hadoop-root-namenode-tux0.log
 #echo "************************************************************************"
-echo "1. Checkpointing simulation..."
-/sbin/m5 checkpoint 0 0
-
-sleep 200
-echo "2. Dumping tux0 namenode log now..."
-echo "************************************************************************"
-cat root/hadoop-1.0.2/logs/hadoop-root-namenode-tux0.log
-echo "************************************************************************"
-echo "2. Checkpointing simulation..."
-/sbin/m5 checkpoint 0 0
-
+#echo "2. Checkpointing simulation..."
+#/sbin/m5 checkpoint 0 0
+#
 #sleep 200
 #echo "3. Dumping tux0 namenode log now..."
 #echo "************************************************************************"
@@ -170,13 +173,13 @@ echo "2. Checkpointing simulation..."
 #THIS IS WHERE EXECUTION BEGINS FROM AFTER RESTORING FROM CKPT CREATED USING THIS SCRIPT
 # Test if we previously okayed ourselves to run this script
 
-echo "2. RUNSCRIPT_VAR is $RUNSCRIPT_VAR"
-if [ "$RUNSCRIPT_VAR" -eq 1 ]
+echo "2. RUNSCRIPT_VAR_START_NPB is $RUNSCRIPT_VAR_START_NPB"
+if [ "$RUNSCRIPT_VAR_START_NPB" -eq 1 ]
 then
 
 	# Signal our future self not to recurse infinitely
-	export RUNSCRIPT_VAR=2
-	echo "3. RUNSCRIPT_VAR is $RUNSCRIPT_VAR"
+	export RUNSCRIPT_VAR_START_NPB=2
+	echo "3. RUNSCRIPT_VAR_START_NPB is $RUNSCRIPT_VAR_START_NPB"
 
 	# Read the script for the checkpoint restored execution
 	echo "Loading new script..."
