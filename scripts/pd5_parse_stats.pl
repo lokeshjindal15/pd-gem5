@@ -1,0 +1,794 @@
+#!/usr/bin/perl
+#
+# Original script by Gokul Subramanian Ravi, 9/17/2013
+#
+#*****************************************************
+# Enhanced by:
+# Lokesh Jindal
+# lokeshjindal15@cs.wisc.edu
+# March, 2015
+#*****************************************************
+
+=pod
+
+=head1 NAME
+
+Script to parse multiple stats.txt files in a directory hierarchy for runs with DVFS
+
+=head1 SYNOPSIS
+
+This script is used to gather per-cpu/per node stats for mutiple benchmarks run with DVFS - essentially for runs
+that dump stats regularly in stats.txt.
+This script creates a per-core csv file cum.coreN.csv which contains FU utilization, core frequency, system-ethernet bytes
+plotted against cumulative simulation time.
+
+perl pd5_parse_stats.pl <dirname>
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-help>
+
+Usage: perl <script> <name of directory containing subdirectories with stats.txt files>
+
+=item B<-dummy>
+
+This is dummy help option
+
+=back
+
+=cut
+
+
+use Getopt::Long;
+use Pod::Usage;
+use File::Find;
+use File::Basename;
+
+######################################################
+# Set the following parameters that will be used to calculate
+# utilization of FUs
+my $IntPhyUnits = 1; # generally $IntPhyUnits == $IntAluUnits since every IntPhyUnit would be capable of doing IntAlut op and some other Int Op
+my $FloatPhyUnits = 1; # generally $FloatPhyUnits == $FloatUnits
+my $MemPhyUnits = 1; # generally $MemPhyUnits == $MemUnits
+
+my $IntAluUnits = 1;
+my $IntAluLatencyFac = 1;
+my $IntMultUnits = 1;# no. of physical FUs capable of doing IntMult
+my $IntMultLatencyFac = 5; # scaling factor to account for multicycle op; decided by OpCalss's issue latency and Op latency
+my $IntDivUnits = 1;
+my $IntDivLatencyFac = 20;
+
+my $FloatUnits = 1; # our benchmarks are not FP intensive so let's take an average number for overall latency
+my $FloatLatencyFac = 20;# this will be something > 10
+
+# Calculations below ignore the Simd insts
+my $SimdUnits = 1; # our benchmarks are not SimD intensive so let's take an average number for overall latency
+my $SimdLatencyFac = 10; #  
+
+my $MemUnits = 1;
+my $MemLatencyFac = 1;
+#######################################################
+
+my $test_name   = 'test';
+my $output_dir_name = 'm5out';
+my $output_dir_var;
+my $help;
+
+my $Vth_min    = 0.10;
+my $Vth_max    = 0.21; 
+my $Vth_step   = 0.01;
+my $Tox_min    = 1.0;
+my $Tox_max    = 1.5;
+my $Tox_step   = 0.1;
+my $Ldraw_min  = 32;
+my $Ldraw_max  = 37;
+my $Ldraw_step =  1;
+my $Leff_min   = 7.4;
+my $Leff_step  = 1.3;
+my $Leff_max   = 18;
+
+my $mLeff;
+my $mVth;
+my $mTox;
+my $mLdraw;
+my $mVth100;
+my $mLeff10;
+my $mLdraw10;
+my $mTox10;
+my $model_name;
+my $model_name_var;
+my $delay;
+my $freq;
+
+$result = GetOptions ("test=s" => \$test_name,    	# string
+		"output=s"   => \$output_dir_name,      # string
+		"help|h" => \$help);  			# help
+
+pod2usage(-1) if $help;
+
+####################################################################
+##Scaling value here
+##processor nominal values
+#my $f_proc_nom = 1400;
+#my $v_proc_nom = 0.9;
+#my $pleak_proc_nom = 0.043742;#0.043742
+#my $pdyn_proc_nom = 1.24219;#Peak Dynamic 1.24219 W obtained from McPAT at 1400 MHz
+#
+#my $DIRECTORY_POWER = 0 ; #
+#my $NOC_POWER = 0 ; #
+#
+##spice circuit nominal values
+#my $f_spice_nom = 1508;#spice circuit runs at 1508 MHz at 0.8 V for Vth = 0.12, Leff = 12.6, Tox = 1, Ldraw = 32
+#my $v_spice_nom = 0.8;
+#my $pleak_spice_nom = 31.13208;#0.8(v) *  38.9151(I) =  31.13208
+#my $pdyn_spice_nom = ($v_spice_nom **2) * $f_spice_nom ;
+#
+#my $f_scale_proc2spice = $f_spice_nom/$f_proc_nom;
+#my $pleak_scale_spice2proc = $pleak_proc_nom/$pleak_spice_nom;
+#my $pdyn_scale_spice2proc = $pdyn_proc_nom/$pdyn_spice_nom;
+####################################################################
+#
+##for ($mLeff = $Leff_min; $mLeff < $Leff_max; $mLeff += $Leff_step)
+#$mLeff = 12.6;
+##$mLeff = 16.5;
+#$mVth = 0.12;
+#$mLdraw = 32;
+#$mTox = 1.0;
+##{
+##for ($mVth = $Vth_min; $mVth < $Vth_max; $mVth += $Vth_step)
+##{
+##	for ($mTox = $Tox_min; $mTox < $Tox_max; $mTox += $Tox_step)
+##	{
+##		for ($mLdraw = $Ldraw_min; $mLdraw < $Ldraw_max; $mLdraw += $Ldraw_step)
+##		{
+#			
+#			$mVth100 = $mVth * 100;
+#			$mLeff10 = $mLeff * 10;
+#			$mLdraw10 = $mLdraw * 10;
+#			$mTox10 = $mTox * 10;
+#			$model_name = "32nm_Vth0".$mVth100."_Leff".$mLeff10."_Tox".$mTox10;
+#			#print "***** model_name is $model_name\n";
+#			$model_name_var = $model_name.".pm";
+#			$output_dir_var = $output_dir_name . "_" . $model_name . "_Ldraw" . $mLdraw10 ;
+#			#print"***** output_dir_var is $output_dir_var\n";
+#			system("sed -i 's/\\\.\\\/include\\\/.*\$/\\\.\\\/include\\\/$model_name_var/g' fo4_24_delay5_tmpl.sp ");
+#			system("sed -i 's/Ldraw=.*\$/Ldraw=$mLdraw/g' fo4_24_delay5_tmpl.sp ");
+#			#system("hspice64 fo4_24_delay5_tmpl.sp > $output_dir_var.lis");
+#			system("hspice64 fo4_24_delay5_tmpl.sp > my_output.txt");
+#			#$delay = `grep tpd= $output_dir_var.lis | awk '{ print \$NF }'`;
+#
+#			print "Vth = ".$mVth.", Leff = ".$mLeff.", Tox = ".$mTox.", Ldraw = ".$mLdraw." \n";
+#	
+#			#parse the output file for voltage and frequency
+#			$toggle = 0;
+#			my $supply;#stores voltage in Volts
+#			my %voltage;#stores frequency in MHz
+#			my @frequency;
+#			#print "Checking for file my_output.txt\n";
+#			#`ls | grep m5out`;
+#			#if (!(-e $output_dir_var.lis))
+#			#{
+#			#	print "ERROR!!! file $output_dir_var.lis does not exist\n";
+#			#	exit;
+#			#}
+#			`chmod 777 my_output.txt`;
+#			$output = `ls -l my_output.txt`;
+#			#print $output;
+#			open FILE_H, "my_output.txt" or die $!;
+#			my $freq_num = 0;
+#			while ($line = <FILE_H>)
+#			{
+#				#print $line;
+#				if ($line =~ /.*parameter supply =\s+([0-9]*\.?[0-9]+)?([eE])?([-+][0-9]+).*/)
+#				{
+#					#print $line;
+#					if ($toggle)
+#					{
+#						print "ERROR!! toggle is $toggle\n";
+#						exit;
+#					}
+#					$toggle = 1;
+#					#print "\n*$3*";
+#					$supply = $1 * (10 ** $3);
+#					#print $supply;
+#				}
+#				if ($line =~ /.*freq=\s+([0-9]*?\.[0-9]+)([a-z]).*/)
+#				{
+#					#print "######$line";
+#					if (!$toggle)
+#					{
+#						print "ERROR!! NOT of toggle  -- toggle is $toggle\n";
+#						exit;
+#					}
+#					$toggle = 0;
+#					if ($2 eq 'g')
+#					{
+#					$frequency[$freq_num]=$1 * 1000;
+#					}
+#					elsif ($2 eq 'x')
+#					{
+#					$frequency[$freq_num]=$1;
+#					}
+#					else
+#					{
+#						print "\n***** ERROR!!! freq= loop g or x not found DOLLAR2 is $2\n";
+#						exit;
+#					}
+#					#print "*$frequency[$freq_num]*";
+#					$voltage{$frequency[$freq_num]} = $supply;
+#					print "$freq_num: $frequency[$freq_num] $voltage{$frequency[$freq_num]}\n";
+#					$freq_num++;
+#				}
+#			}
+#print "*******************************************************************************************\n";
+#		
+#
+#			#$supply =  `grep "parameter supply =" $output_dir_var.lis | awk '{ print \$NF }'`;
+#			#$freq =  `grep freq= $output_dir_var.lis | awk '{ print \$NF }'`;
+#			#print "Vth = ".$mVth.", Leff = ".$mLeff.", Tox = ".$mTox.", Ldraw = ".$mLdraw." \n".$freq.$supply;
+#			
+##
+##		}	
+##	}
+##}
+##}
+#
+##Combine my_spice_leakage.pl here
+#system("sed -i 's/\\\.\\\/include\\\/.*\$/\\\.\\\/include\\\/$model_name_var/g' lkgpower_core_tmpl.sp ");
+#system("sed -i 's/Ldraw=.*\$/Ldraw=$mLdraw/g' lkgpower_core_tmpl.sp ");
+#system("hspice64 lkgpower_core_tmpl.sp > my_output2.txt");
+#print "Vth = ".$mVth.", Leff = ".$mLeff.", Tox = ".$mTox.", Ldraw = ".$mLdraw."\n".$Ilkg;
+##my $supply; #Declared above Use here as well
+#@voltage2;
+#my %ileak;
+#my %pleak;
+#
+#open FILE_H, "my_output2.txt" or die $!;
+#my $voltage2_num = 0;
+#while ($line = <FILE_H>)
+#{
+#	#print $line;
+#	if ($line =~ /\s+([0-9]+)\.00000(.)\s+([0-9]+\.[0-9]+).*/)
+#	{
+#		#print $line;
+#		#print "*$1*$2*";
+#		if ($2 eq 'm')
+#		{
+#		$supply = $1/1000;
+#		}
+#		else
+#		{
+#		$supply = $1;
+#		}
+#		$voltage2[$voltage2_num] = $supply;
+#		$ileak{$voltage2[$voltage2_num]} = $3;
+#		$pleak{$voltage2[$voltage2_num]} = $voltage2[$voltage2_num] * $ileak{$voltage2[$voltage2_num]};
+#		print "$voltage2_num: $voltage2[$voltage2_num] $ileak{$voltage2[$voltage2_num]} $pleak{$voltage2[$voltage2_num]}\n";
+#		$voltage2_num++;
+#	}
+#}
+##
+#print "*******************************************************************************************\n";
+#################################### SPICE DONE -> NOW start McPAT scaling#################################
+###########################################
+#parse the stats file to obtain the desired frequency values and sim_seconds values
+###########################################
+#$stats_file = $ARGV[0];
+#if ($ARGV[1])
+#{
+#$out_dir = $ARGV[1];
+#print "Creating directory $out_dir\n";
+#`mkdir -p $out_dir`;
+#}
+#else
+#{
+#$out_dir = "./";
+#}
+
+my $DATA_DIR = "";
+if ($ARGV[0])
+{
+	$DATA_DIR = $ARGV[0];
+	print "DATA_DIR being used is *$DATA_DIR*\n";
+}
+else
+{
+	print "Usage: <script> <name of directory containing subdirectories with stats.txt files>\n";
+	print "Kindly enter a valid DATA_DIR to look for stats.txt files! Exiting ... \n";
+	exit;
+}
+
+my @stats_file_list;
+
+sub wanted_files
+{
+	my $file_name = $File::Find::name;
+	#print "file_name is $file_name\n";
+	if (!(-d $file_name))
+	{
+		print "file_name is $file_name\n";
+	}
+
+	if (!(-d $file_name) and ($_ =~ /stats.txt$/)and !($file_name =~ /switch/))# ignore switch stats.txt
+	{
+		push @stats_file_list, $file_name;
+	}
+}
+find(\&wanted_files, $DATA_DIR);
+
+$num_stats_file = @stats_file_list;
+
+
+
+print "number of stats files found is $num_stats_file\n";
+my $l = 0;
+while ( $l < $num_stats_file)
+{
+	chomp($stats_file_list[$l]);
+	print "$stats_file_list[$l]\n";
+	$l++;
+}
+
+my %EXEC_TIME_LIST;
+my %ENERGY_LIST;
+my %EDP_LIST;
+my @BENCHMARKS;
+
+my $STATS_FILE_I = 0;
+while ($STATS_FILE_I < $num_stats_file)
+{
+	$stats_file = $stats_file_list[$STATS_FILE_I];
+	$out_dir = dirname($stats_file);
+	$BENCHMARKS[$STATS_FILE_I] = basename ($out_dir);
+	print "Stats file beng used is $stats_file and outdir is $out_dir\n";
+	print "********DANGER******** Removing existing part-wise files: rm $out_dir/stats.txt.*\n";
+	`rm $out_dir/stats.txt.`; 	
+	
+	my $MAXPHASES = 0;
+	$MAXPHASES = `grep "Begin Simulation Statistics" $stats_file | wc -l`;
+	chomp($MAXPHASES);
+	print "Number of phases in $stats_file is $MAXPHASES\n";
+	
+	open STATS_FILE, $stats_file or die $!;
+	my $line="";
+	my $part = 0;
+	my @proc_sim_seconds;
+	my @sim_ticks;
+	my $proc_total_sim_seconds=0;
+	my @proc_clk;
+	my @sys_eth_rxbytes;
+	my @sys_eth_bytes = 0;
+	my @sys_eth_txbytes;
+	my @proc_freq;
+	my @proc_int_busy_cycles;
+	my @proc_num_cycles;
+	my @proc_int_max_cycles;
+	my @proc_int_util;
+	my @proc_mem_busy_cycles;
+	my @proc_mem_max_cycles;
+	my @proc_mem_util;
+	my @proc_float_busy_cycles;
+	my @proc_float_max_cycles;
+	my @proc_float_util;
+	my $tmp_sim_seconds = 0;
+	my $captured = 1;
+	while ($line = <STATS_FILE>)
+	{
+		if ($line =~ /.*Begin Simulation Statistics.*/)
+		{
+			#print "Detected Begin\n";	
+			if ($part)
+			{
+			close OUTFILE;
+			}
+			$part++;
+
+			#initialize all values to be grepped to -1
+			my $num = 0;
+			while ($num < 4)
+			{
+			$proc_freq[$num][$part -1] = -1;
+			$proc_int_busy_cycles[$num][$part -1] = -1;
+			$proc_float_busy_cycles[$num][$part -1] = -1;
+			$proc_mem_busy_cycles[$num][$part -1] = -1;
+			
+			$num++;
+			}
+			$sys_eth_bytes[$part -1] = 0;# not every phase has this parameter dumped in stats.txt
+
+			print "Creating file $stats_file.$part\n";
+			open OUTFILE, "> $stats_file.$part";
+			print OUTFILE $line;
+		}
+	
+		else
+		{
+			if ($line =~ /.*sim_seconds\s+(\d+\.?\d+).*/)
+			{
+				if ($captured eq 0)
+				{
+					print "\n***** ERROR!!! CAPTURED is ZERO = $captured for PART = $part\n";
+					exit;
+				}
+				$tmp_sim_seconds = $1;
+				#print "0 tmp_sim_seconds is $tmp_sim_seconds and part is $part\n";
+				$captured = 0;
+				#$proc_sim_seconds{$part} = $1;
+				#print "proc_sim_seconds $proc_sim_seconds{$part}\n";
+				#$proc_total_sim_seconds += $proc_sim_seconds{$part};
+			}
+			if ($line =~ /.*sim_ticks\s+(\d+)/)
+			{
+				$sim_ticks[$part -1] = $1; # 1 sim_tick is 10^(-12)s
+			}
+			if ($line =~ /.*system.realview.ethernet.txBytes\s+(\d+)/)
+			{
+				$sys_eth_txbytes[$part -1] = $1;
+				$sys_eth_bytes[$part - 1] += $sys_eth_txbytes[$part -1];
+			}
+			if ($line =~ /.*system.realview.ethernet.rxBytes\s+(\d+)/)
+			{
+				$sys_eth_rxbytes[$part -1] = $1;
+				$sys_eth_bytes[$part - 1] += $sys_eth_rxbytes[$part -1];
+			}
+
+			if ($line =~ /.*cpu_clk_domain.clock\s+(\d+)/)
+			{
+				# calculate no. of cycles simulated for this processor
+				$proc_num_cycles[0][$part - 1] = $sim_ticks[$part - 1] / $1; # since 1 $1 gives no. of ticks in 1 cpu cycle
+
+				$proc_clk[0][$part - 1] = $1;
+				#print "proc_clk $proc_clk[$part - 1]\n";
+				$proc_freq[0][$part -1] = 1000/$proc_clk[0][$part -1];#in GHz
+				$proc_freq[0][$part -1] = int($proc_freq[0][$part -1] * 1000);#in MHz
+				#print "1 tmp_sim_seconds is $tmp_sim_seconds and part is $part\n";
+				#$proc_sim_seconds[$part -1] = $tmp_sim_seconds;
+				#$proc_total_sim_seconds += $proc_sim_seconds[$part -1];
+			}
+			if ($line =~ /.*cpu_clk_domain1.clock\s+(\d+)/)
+			{
+				$proc_num_cycles[1][$part - 1] = $sim_ticks[$part - 1] / $1; # since 1 $1 gives no. of ticks in 1 cpu cycle
+
+				$proc_clk[1][$part - 1] = $1;
+				#print "proc_clk $proc_clk[$part - 1]\n";
+				$proc_freq[1][$part -1] = 1000/$proc_clk[1][$part -1];#in GHz
+				$proc_freq[1][$part -1] = int($proc_freq[1][$part -1] * 1000);#in MHz
+				#print "1 tmp_sim_seconds is $tmp_sim_seconds and part is $part\n";
+				#$proc_sim_seconds[$part -1] = $tmp_sim_seconds;
+				#$proc_total_sim_seconds += $proc_sim_seconds[$part -1];
+			}
+			if ($line =~ /.*cpu_clk_domain2.clock\s+(\d+)/)
+			{
+				$proc_num_cycles[2][$part - 1] = $sim_ticks[$part - 1] / $1; # since 1 $1 gives no. of ticks in 1 cpu cycle
+
+				$proc_clk[2][$part - 1] = $1;
+				#print "proc_clk $proc_clk[$part - 1]\n";
+				$proc_freq[2][$part -1] = 1000/$proc_clk[2][$part -1];#in GHz
+				$proc_freq[2][$part -1] = int($proc_freq[2][$part -1] * 1000);#in MHz
+				#print "1 tmp_sim_seconds is $tmp_sim_seconds and part is $part\n";
+				#$proc_sim_seconds[$part -1] = $tmp_sim_seconds;
+				#$proc_total_sim_seconds += $proc_sim_seconds[$part -1];
+			}
+			if ($line =~ /.*cpu_clk_domain3.clock\s+(\d+)/)
+			{
+				$proc_num_cycles[3][$part - 1] = $sim_ticks[$part - 1] / $1; # since 1 $1 gives no. of ticks in 1 cpu cycle
+				print "proc_num_cycles cpu3: $proc_num_cycles[3][$part - 1]\n";
+
+				$proc_clk[3][$part - 1] = $1;
+				#print "proc_clk $proc_clk[$part - 1]\n";
+				$proc_freq[3][$part -1] = 1000/$proc_clk[3][$part -1];#in GHz
+				$proc_freq[3][$part -1] = int($proc_freq[3][$part -1] * 1000);#in MHz
+				#print "1 tmp_sim_seconds is $tmp_sim_seconds and part is $part\n";
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::IntAlu\s+(\d+)/)
+			{
+				print "intalu_insts: cpu$1: $2\n";
+				#initialize to zero
+				$proc_int_busy_cycles[$1][$part - 1] = 0;
+				$proc_int_busy_cycles[$1][$part - 1] += $2 * $IntAluLatencyFac;
+				print "proc_int_busy_cycles cpu$1 = $proc_int_busy_cycles[$1][$part - 1]\n";
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::IntMult\s+(\d+)/)
+			{
+				print "intmult_insts: cpu$1: $2\n";
+				$proc_int_busy_cycles[$1][$part - 1] += $2 * $IntMultLatencyFac;
+				print "proc_int_busy_cycles = $proc_int_busy_cycles[$1][$part - 1]\n";
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::IntDiv\s+(\d+)/)
+			{
+				print "intdiv_insts: cpu$1: $2\n";
+				$proc_int_busy_cycles[$1][$part - 1] += $2 * $IntDivLatencyFac;
+				print "proc_int_busy_cycles = $proc_int_busy_cycles[$1][$part - 1]\n";
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatAdd\s+(\d+)/)
+			{
+				print "floatadd_insts: cpu$1: $2\n";
+				# initialize to zero
+				$proc_float_busy_cycles[$1][$part - 1] = 0;
+				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatCmp\s+(\d+)/)
+			{
+				print "floatcmp_insts: cpu$1: $2\n";
+				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatCvt\s+(\d+)/)
+			{
+				print "floatcvt_insts: cpu$1: $2\n";
+				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatMult\s+(\d+)/)
+			{
+				print "floatmult_insts: cpu$1: $2\n";
+				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatDiv\s+(\d+)/)
+			{
+				print "floatdiv_insts: cpu$1: $2\n";
+				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatSqrt\s+(\d+)/)
+			{
+				print "floatsqrt_insts: cpu$1: $2\n";
+				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::MemRead\s+(\d+)/)
+			{
+				print "memread_insts: cpu$1: $2\n";
+				# init to zero
+				$proc_mem_busy_cycles[$1][$part - 1] = 0;
+				$proc_mem_busy_cycles[$1][$part - 1] += $2 * $MemLatencyFac;
+			}
+			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::MemWrite\s+(\d+)/)
+			{
+				print "memwrite_insts: cpu$1: $2\n";
+				$proc_mem_busy_cycles[$1][$part - 1] += $2 * $MemLatencyFac;
+			}
+			if ($line =~ /End Simulation Statistics/)
+			{
+				if ($captured eq 1)
+				{
+					print "\n***** ERROR!!! CAPTURED is ONE = $captured for PART = $part\n";
+					exit;
+				}
+				$captured = 1;
+				my $num = 0;
+				while ($num < 4)
+				{
+				print "captures has been anded with :$proc_freq[$num][$part -1]:*:$proc_int_busy_cycles[$num][$part -1]:*:$proc_float_busy_cycles[$num][$part -1]:*:$proc_mem_busy_cycles[$num][$part -1]:\n";
+				$captured &= ($proc_freq[$num][$part -1] != -1);
+				$captured &= ($proc_int_busy_cycles[$num][$part -1] != -1);
+				$captured &= ($proc_float_busy_cycles[$num][$part -1] != -1);
+				$captured &= ($proc_mem_busy_cycles[$num][$part -1] != -1);
+				
+				$num++;
+				}
+				# let's calculate the per-cpu FU utilization for this phase/part
+				$num = 0;
+				while ($num < 4)
+				{
+				$proc_int_max_cycles[$num][$part -1] = $proc_num_cycles[$num][$part - 1] * $IntPhyUnits; 
+				$proc_float_max_cycles[$num][$part -1] = $proc_num_cycles[$num][$part - 1] * $FloatPhyUnits; 
+				$proc_mem_max_cycles[$num][$part -1] = $proc_num_cycles[$num][$part - 1] * $MemPhyUnits; 
+				$proc_int_util[$num][$part - 1] = sprintf("%.2f",$proc_int_busy_cycles[$num][$part-1] / $proc_int_max_cycles[$num][$part -1] * 100);
+				$proc_float_util[$num][$part - 1] = sprintf("%.2f",$proc_float_busy_cycles[$num][$part-1] / $proc_float_max_cycles[$num][$part -1] * 100) ;
+				$proc_mem_util[$num][$part - 1] = sprintf("%.2f",$proc_mem_busy_cycles[$num][$part-1] / $proc_mem_max_cycles[$num][$part -1] * 100) ;
+				
+				$num++;
+				}
+				
+				#let's store the sim_seconds in this phase
+				$proc_sim_seconds[$part -1] = $tmp_sim_seconds;
+				$proc_total_sim_seconds += $proc_sim_seconds[$part -1];
+
+			}
+			
+			print OUTFILE $line;
+		}
+	}
+	
+	close OUTFILE;
+	
+	#Do not want to count the last part of stats.txt
+	$proc_total_sim_seconds -= $proc_sim_seconds[$part -1];
+	
+	if ($part != $MAXPHASES)
+	{
+		print "***** ERROR!!! part = $part and MAXPHASES = $MAXPHASES not equal\n";
+		exit;
+	}
+	print "Done splitting $stats_file into $part files!!!!\n\n";
+	print "*******************************************************************************************\n";
+	############################################
+	##now use the spice results to obtain the proc power values by scaling
+	###########################################
+	#my @f_stats = @proc_freq;
+	#my $f_stats_num = $MAXPHASES;
+	#my @proc_leakp;
+	#my @proc_dynp;
+	#my $cur_proc_f = 0;
+	#my $scaled_spice_f = $cur_proc_f * $f_scale_proc2spice;
+	#
+	#my $f_stats_idx = 0;
+	#while ( $f_stats_idx < ($f_stats_num -1))
+	#{
+	#	#now find the spice voltage corresponding to this frequency
+	#	
+	#
+	#	#Start of per core codei
+	#	my $core_i = 0;
+	#	while ( $core_i < 4)
+	#	{
+	#		$cur_proc_f = $f_stats[$core_i][$f_stats_idx];
+	#		#print "***** cur_proc_f is $cur_proc_f\n";
+	#		$scaled_spice_f = $cur_proc_f * $f_scale_proc2spice;
+	#		my $f_idx = 0;
+	#		my $f_spice_found = $frequency[$f_idx];
+	#		my $curr_diff = abs($scaled_spice_f - $frequency[$f_idx]);
+	#		my $diff_min = $curr_diff;
+	#		
+	#		$f_idx++;
+	#		while ($f_idx < $freq_num)
+	#		{
+	#			$curr_diff = abs($scaled_spice_f - $frequency[$f_idx]);
+	#			if ($curr_diff < $diff_min)
+	#			{
+	#				$f_spice_found = $frequency[$f_idx];
+	#				$diff_min = $curr_diff;		
+	#			}
+	#			$f_idx++;
+	#		}
+	#		
+	#		#print "f_spice_found is $f_spice_found\n";
+	#		my $v_spice_found = $voltage{$f_spice_found};
+	#		#print "v_spice_found is $v_spice_found\n";
+	#		
+	#		#make sure $v_spice_found exists in the voltage2 array before we look up the leakage power
+	#		if ( @found = grep { $_ eq $v_spice_found } @voltage2 )
+	#		{
+	#		      my $found = join ",", @found;
+	#		      #print "Here's what we found: $found\n";
+	#		}
+	#		else
+	#		{
+	#			print "\n***** ERROR!!! v_spice_found = $v_spice_found not found in voltage2 array\n";
+	#			exit;
+	#		}
+	#		
+	#		#find the pleak and pdyn corresponding to the v_spice_found
+	#		my $pleak_spice_found = $pleak{$v_spice_found};
+	#		#print "\npleak_spice_found is $pleak_spice_found\n";
+	#		
+	#		$proc_leakp[$core_i][$f_stats_idx] = $pleak_spice_found * $pleak_scale_spice2proc;
+	#		$proc_dynp[$core_i][$f_stats_idx] = ($v_spice_found ** 2) * $f_spice_found * $pdyn_scale_spice2proc;
+	#		print "\n$f_stats_idx: CPU$core_i freq = $cur_proc_f scaled_spice_f = $scaled_spice_f f_spice = $f_spice_found time = $proc_sim_seconds[$f_stats_idx] proc_leakp = $proc_leakp[$core_i][$f_stats_idx] proc_dynp = $proc_dynp[$core_i][$f_stats_idx]\n";
+	#		
+	#	$core_i++;
+	#	}
+	#	#END of per core code
+	#	
+	#
+	#$f_stats_idx++;
+	#}
+	#if ($f_stats_idx != ($MAXPHASES -1))
+	#{
+	#	print "***** ERROR!!! f_stats_idx = $f_stats_idx and MAXPHASES = $MAXPHASES not differ by 1\n";
+	#	exit;
+	#}
+	#print "*******************************************************************************************\n";
+	#######################################################################################################
+	## Now let us calculate the energy numbers - energy and EDP
+	#
+	#my @proc_energy;
+	#my @cpu_energy;
+	#my $proc_total_energy = 0;
+	#my $f_stats_index = 0;
+	#$f_stats_index = 0;
+	#while($f_stats_index < ($MAXPHASES -1))
+	#{
+	#	$proc_energy[$f_stats_index] = ($proc_leakp[0][$f_stats_index] + $proc_leakp[1][$f_stats_index] + $proc_leakp[2][$f_stats_index] +$proc_leakp[3][$f_stats_index] 
+	#					+ $proc_dynp[0][$f_stats_index] + $proc_dynp[1][$f_stats_index] + $proc_dynp[2][$f_stats_index] + $proc_dynp[3][$f_stats_index]
+	#					+ $DIRECTORY_POWER + $NOC_POWER) 
+	#					* $proc_sim_seconds[$f_stats_index];
+	#	$cpu_energy[0] += ($proc_leakp[0][$f_stats_index] + $proc_dynp[0][$f_stats_index]) * $proc_sim_seconds[$f_stats_index];
+	#	$cpu_energy[1] += ($proc_leakp[1][$f_stats_index] + $proc_dynp[1][$f_stats_index]) * $proc_sim_seconds[$f_stats_index];
+	#	$cpu_energy[2] += ($proc_leakp[2][$f_stats_index] + $proc_dynp[2][$f_stats_index]) * $proc_sim_seconds[$f_stats_index];
+	#	$cpu_energy[3] += ($proc_leakp[3][$f_stats_index] + $proc_dynp[3][$f_stats_index]) * $proc_sim_seconds[$f_stats_index];
+	#
+	#	$proc_total_energy += $proc_energy[$f_stats_index];
+	#	print "\n$f_stats_index : proc_energy = $proc_energy[$f_stats_index] proc_time = $proc_sim_seconds[$f_stats_index]";
+	#	my $accum_energy =  ($cpu_energy[0] + $cpu_energy[1] + $cpu_energy[2] + $cpu_energy[3]);
+	#	if ( $proc_total_energy != $accum_energy)
+	#	{
+	#		print "***** ERROR!!! : proc_total_energy distributed calc failed!!! $proc_total_energy != $accum_energy";
+	#	}
+	#	$f_stats_index++;
+	#}
+	#if ($f_stats_index != ($MAXPHASES -1))
+	#{
+	#	print "***** ERROR!!! f_stats_index = $f_stats_index and MAXPHASES = $MAXPHASES not differ by 1\n";
+	#	exit;
+	#}
+	#
+	#my $EDP = $proc_total_energy * $proc_total_sim_seconds;
+	#print "\nproc_total_energy = $proc_total_energy proc_total_sim_seconds = $proc_total_sim_seconds\n";
+	#print "\nEDP = $EDP for $BENCHMARKS[$STATS_FILE_I]\n";
+	#$EXEC_TIME_LIST{$BENCHMARKS[$STATS_FILE_I]} = $proc_total_sim_seconds;
+	#$ENERGY_LIST{$BENCHMARKS[$STATS_FILE_I]} = $proc_total_energy;
+	#$EDP_LIST{$BENCHMARKS[$STATS_FILE_I]} = $EDP;
+
+	#print "*******************************************************************************************\n";
+	
+	#### create csv for time vs frequency
+	my $iter = 0;
+	my $cum_proc_sim_seconds = 0;
+	my $plot_sim_sec = 0;
+	my $totalp = 0;
+	open F10, ">$out_dir/timefreq.csv" or die $!;
+	print F10 "SimSec,Core0Freq,Core1Freq,Core2Freq,Core3Freq\n";
+	open F0, ">$out_dir/cum.core0.csv" or die $!;
+	print F0 "CumSimSec,Core0Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	open F1, ">$out_dir/cum.core1.csv" or die $!;
+	print F1 "CumSimSec,Core1Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	open F2, ">$out_dir/cum.core2.csv" or die $!;
+	print F2 "CumSimSec,Core2Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	open F3, ">$out_dir/cum.core3.csv" or die $!;
+	print F3 "CumSimSec,Core3Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	#open F6, ">$out_dir/cum.timedynp.csv" or die $!;
+	#print F6 "cum_proc_sim_seconds,proc_dynp0,proc_dynp1,proc_dynp2,proc_dynp3\n";
+	while($iter < ($MAXPHASES -1))
+	{	
+		#$totalp = $proc_dynp[$iter] + $proc_leakp[$iter];
+		#$totalp = ($proc_leakp[0][$iter] + $proc_leakp[1][$iter] + $proc_leakp[2][$iter] +$proc_leakp[3][$iter] 
+		#				+ $proc_dynp[0][$iter] + $proc_dynp[1][$iter] + $proc_dynp[2][$iter] + $proc_dynp[3][$iter]
+		#				+ $DIRECTORY_POWER + $NOC_POWER);
+		print F10 "$proc_sim_seconds[$iter],$proc_freq[0][$iter],$proc_freq[1][$iter],$proc_freq[2][$iter],$proc_freq[3][$iter]\n";
+		$plot_sim_sec = $cum_proc_sim_seconds + 0.00001;
+		print F0 "$plot_sim_sec,$proc_freq[0][$iter], ,$proc_int_util[0][$iter],$proc_float_util[0][$iter],$proc_mem_util[0][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F1 "$plot_sim_sec,$proc_freq[1][$iter], ,$proc_int_util[1][$iter],$proc_float_util[1][$iter],$proc_mem_util[1][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F2 "$plot_sim_sec,$proc_freq[2][$iter], ,$proc_int_util[2][$iter],$proc_float_util[2][$iter],$proc_mem_util[2][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F3 "$plot_sim_sec,$proc_freq[3][$iter], ,$proc_int_util[3][$iter],$proc_float_util[3][$iter],$proc_mem_util[3][$iter], ,$sys_eth_bytes[$iter]\n";
+		
+		#print F6 "$plot_sim_sec,$proc_dynp[0][$iter],$proc_dynp[1][$iter],$proc_dynp[2][$iter],$proc_dynp[3][$iter]\n";
+		$cum_proc_sim_seconds += $proc_sim_seconds[$iter];
+		print F0 "$cum_proc_sim_seconds,$proc_freq[0][$iter], ,$proc_int_util[0][$iter],$proc_float_util[0][$iter],$proc_mem_util[0][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F1 "$cum_proc_sim_seconds,$proc_freq[1][$iter], ,$proc_int_util[1][$iter],$proc_float_util[1][$iter],$proc_mem_util[1][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F2 "$cum_proc_sim_seconds,$proc_freq[2][$iter], ,$proc_int_util[2][$iter],$proc_float_util[2][$iter],$proc_mem_util[2][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F3 "$cum_proc_sim_seconds,$proc_freq[3][$iter], ,$proc_int_util[3][$iter],$proc_float_util[3][$iter],$proc_mem_util[3][$iter], ,$sys_eth_bytes[$iter]\n";
+		#print F6 "$cum_proc_sim_seconds,$proc_dynp[0][$iter],$proc_dynp[1][$iter],$proc_dynp[2][$iter],$proc_dynp[3][$iter]\n";
+		$iter++;
+	}
+
+$STATS_FILE_I++;
+print "##########################################################################################################################################\n";
+}
+
+
+#@S_BENCHMARKS = sort @BENCHMARKS;
+#
+#open EDP_FILE, ">$DATA_DIR/EDP.csv" or die $!;
+#print EDP_FILE "benchmark,EDP\n";
+#open EXEC_TIME_FILE, ">$DATA_DIR/EXEC_TIME.csv" or die $!;
+#print EXEC_TIME_FILE "benchmark,exec_time\n";
+#open ENERGY_FILE, ">$DATA_DIR/ENERGY.csv" or die $!;
+#print ENERGY_FILE "benchmark,energy\n";
+#
+#my $bmark = 0;
+#
+#while ($bmark < @S_BENCHMARKS )
+#{
+#	print EDP_FILE "$S_BENCHMARKS[$bmark],$EDP_LIST{$S_BENCHMARKS[$bmark]}\n";
+#	print EXEC_TIME_FILE "$S_BENCHMARKS[$bmark],$EXEC_TIME_LIST{$S_BENCHMARKS[$bmark]}\n";
+#	print ENERGY_FILE "$S_BENCHMARKS[$bmark],$ENERGY_LIST{$S_BENCHMARKS[$bmark]}\n";
+#	$bmark++
+#}
+
+# Useful commands
+
+# $gpu_cycle_val = `grep gpu_sim_cycle $output_dir_var/log | awk '{ print \$NF }'`;
+
+__END__
+
+
