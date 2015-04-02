@@ -29,54 +29,57 @@
 
 from m5.objects import *
 
-# Simple ALU Instructions have a latency of 1
-class O3_ARM_v7a_Simple_Int(FUDesc):
-    opList = [ OpDesc(opClass='IntAlu', opLat=1) ]
-    count = 2
-
-# Complex ALU instructions have a variable latencies
-class O3_ARM_v7a_Complex_Int(FUDesc):
-    opList = [ OpDesc(opClass='IntMult', opLat=3, issueLat=1),
-               OpDesc(opClass='IntDiv', opLat=12, issueLat=12),
-               OpDesc(opClass='IprAccess', opLat=3, issueLat=1) ]
+class Port0_FU(FUDesc):
+    opList = [ OpDesc(opClass="IntAlu", opLat=1),
+               OpDesc(opClass="IntDiv", opLat=20, issueLat=20),
+               OpDesc(opClass="FloatMult", opLat=5),
+               OpDesc(opClass="FloatCvt", opLat=3),
+               OpDesc(opClass="FloatDiv", opLat=10),
+               OpDesc(opClass="FloatSqrt", opLat=10),
+               OpDesc(opClass="SimdFloatMult", opLat=5),
+               OpDesc(opClass="SimdFloatMultAcc", opLat=6),
+               OpDesc(opClass="SimdFloatCvt", opLat=3),
+               OpDesc(opClass="SimdFloatDiv", opLat=10),
+               OpDesc(opClass="SimdFloatSqrt", opLat=10),
+               OpDesc(opClass="SimdAddAcc", opLat=1),
+               OpDesc(opClass="SimdAdd", opLat=1),
+               OpDesc(opClass="SimdAlu", opLat=1),
+               OpDesc(opClass="SimdShiftAcc", opLat=1),
+               OpDesc(opClass="SimdShift", opLat=1) ]
     count = 1
 
+class Port1_FU(FUDesc):
+    opList = [ OpDesc(opClass="IntAlu", opLat=1),
+               OpDesc(opClass="IntMult", opLat=3),
+               OpDesc(opClass="IprAccess", opLat=3),
+               OpDesc(opClass="FloatAdd", opLat=3),
+               OpDesc(opClass="SimdFloatAlu", opLat=3),
+               OpDesc(opClass="SimdFloatAdd", opLat=3),
+               OpDesc(opClass="SimdMult", opLat=3),
+               OpDesc(opClass="SimdMultAcc", opLat=4),
+               OpDesc(opClass="SimdSqrt", opLat=4),
+               OpDesc(opClass="SimdCvt", opLat=3) ]
+    count = 1
 
-# Floating point and SIMD instructions
-class O3_ARM_v7a_FP(FUDesc):
-    opList = [ OpDesc(opClass='SimdAdd', opLat=4),
-               OpDesc(opClass='SimdAddAcc', opLat=4),
-               OpDesc(opClass='SimdAlu', opLat=4),
-               OpDesc(opClass='SimdCmp', opLat=4),
-               OpDesc(opClass='SimdCvt', opLat=3),
-               OpDesc(opClass='SimdMisc', opLat=3),
-               OpDesc(opClass='SimdMult',opLat=5),
-               OpDesc(opClass='SimdMultAcc',opLat=5),
-               OpDesc(opClass='SimdShift',opLat=3),
-               OpDesc(opClass='SimdShiftAcc', opLat=3),
-               OpDesc(opClass='SimdSqrt', opLat=9),
-               OpDesc(opClass='SimdFloatAdd',opLat=5),
-               OpDesc(opClass='SimdFloatAlu',opLat=5),
-               OpDesc(opClass='SimdFloatCmp', opLat=3),
-               OpDesc(opClass='SimdFloatCvt', opLat=3),
-               OpDesc(opClass='SimdFloatDiv', opLat=3),
-               OpDesc(opClass='SimdFloatMisc', opLat=3),
-               OpDesc(opClass='SimdFloatMult', opLat=3),
-               OpDesc(opClass='SimdFloatMultAcc',opLat=1),
-               OpDesc(opClass='SimdFloatSqrt', opLat=9),
-               OpDesc(opClass='FloatAdd', opLat=5),
-               OpDesc(opClass='FloatCmp', opLat=5),
-               OpDesc(opClass='FloatCvt', opLat=5),
-               OpDesc(opClass='FloatDiv', opLat=9, issueLat=9),
-               OpDesc(opClass='FloatSqrt', opLat=33, issueLat=33),
-               OpDesc(opClass='FloatMult', opLat=4) ]
-    count = 2
+class Port5_FU(FUDesc):
+    opList = [ OpDesc(opClass="IntAlu", opLat=1),
+               OpDesc(opClass="FloatCmp", opLat=1),
+               OpDesc(opClass="SimdFloatCmp", opLat=3),
+               OpDesc(opClass="SimdFloatMisc", opLat=3),
+               OpDesc(opClass="SimdCmp", opLat=1),
+               OpDesc(opClass="SimdMisc", opLat=3),
+               OpDesc(opClass="SimdAdd", opLat=1),
+               OpDesc(opClass="SimdAddAcc", opLat=1),
+               OpDesc(opClass="SimdShiftAcc", opLat=1),
+               OpDesc(opClass="SimdShift", opLat=1),
+               OpDesc(opClass="SimdAlu", opLat=1) ]
+    count = 1
 
 
 # Load/Store Units
 class O3_ARM_v7a_Load(FUDesc):
     opList = [ OpDesc(opClass='MemRead',opLat=2) ]
-    count = 1
+    count = 4
 
 class O3_ARM_v7a_Store(FUDesc):
     opList = [OpDesc(opClass='MemWrite',opLat=2) ]
@@ -84,12 +87,14 @@ class O3_ARM_v7a_Store(FUDesc):
 
 # Functional Units for this CPU
 class O3_ARM_v7a_FUP(FUPool):
-    FUList = [O3_ARM_v7a_Simple_Int(), O3_ARM_v7a_Complex_Int(),
-              O3_ARM_v7a_Load(), O3_ARM_v7a_Store(), O3_ARM_v7a_FP()]
+    FUList = [Port0_FU(), Port1_FU(),
+              O3_ARM_v7a_Load(), O3_ARM_v7a_Store(), Port5_FU()]
 
 # Bi-Mode Branch Predictor
 class O3_ARM_v7a_BP(BranchPredictor):
-    predType = "bi-mode"
+    predType = "tournament"
+    localCtrBits = 2
+    localHistoryTableSize = 64
     globalPredictorSize = 8192
     globalCtrBits = 2
     choicePredictorSize = 8192
@@ -98,10 +103,21 @@ class O3_ARM_v7a_BP(BranchPredictor):
     BTBTagSize = 18
     RASSize = 16
     instShiftAmt = 2
+#    predType = "bi-mode"
+#    globalPredictorSize = 8192
+#    globalCtrBits = 2
+#    choicePredictorSize = 8192
+#    choiceCtrBits = 2
+#    BTBEntries = 2048
+#    BTBTagSize = 18
+#    RASSize = 16
+#    instShiftAmt = 2
 
 class O3_ARM_v7a_3(DerivO3CPU):
-    LQEntries = 16
-    SQEntries = 16
+    LQEntries = 72
+#   LQEntries = 72   based on nehalem.cfg
+    SQEntries = 42
+#   SQEntries = 42   based on nehalem.cfg
     LSQDepCheckShift = 0
     LFSTSize = 1024
     SSITSize = 1024
@@ -115,53 +131,115 @@ class O3_ARM_v7a_3(DerivO3CPU):
     iewToRenameDelay = 1
     commitToRenameDelay = 1
     commitToIEWDelay = 1
-    fetchWidth = 3
-    fetchBufferSize = 16
-    fetchToDecodeDelay = 3
-    decodeWidth = 3
+    fetchWidth = 4
+ #   fetchBufferSize = 16
+    fetchToDecodeDelay = 2
+    decodeWidth = 4
     decodeToRenameDelay = 2
-    renameWidth = 3
-    renameToIEWDelay = 1
+    renameWidth = 4
+    renameToIEWDelay = 2
     issueToExecuteDelay = 1
-    dispatchWidth = 6
-    issueWidth = 8
-    wbWidth = 8
+    dispatchWidth = 4
+    issueWidth = 5
+    wbWidth = 5
+#    wbDepth = 1       Not supported
     fuPool = O3_ARM_v7a_FUP()
     iewToCommitDelay = 1
     renameToROBDelay = 1
-    commitWidth = 8
-    squashWidth = 8
+    commitWidth = 4
+    squashWidth = 16
     trapLatency = 13
-    backComSize = 5
+    backComSize = 10
     forwardComSize = 5
-    numPhysIntRegs = 128
-    numPhysFloatRegs = 192
-    numIQEntries = 32
-    numROBEntries = 40
-
+    numPhysIntRegs = 256
+    numPhysFloatRegs = 256
+    numIQEntries = 36
+    numROBEntries = 128
+#    numIQEntries = 64           based on nehalem.cfg
+#    numROBEntries = 192         based on nehalem.cfg
     switched_out = False
     branchPred = O3_ARM_v7a_BP()
+
+#    LQEntries = 16
+#    SQEntries = 16
+#    LSQDepCheckShift = 0
+#    LFSTSize = 1024
+#    SSITSize = 1024
+#    decodeToFetchDelay = 1
+#    renameToFetchDelay = 1
+#    iewToFetchDelay = 1
+#    commitToFetchDelay = 1
+#    renameToDecodeDelay = 1
+#    iewToDecodeDelay = 1
+#    commitToDecodeDelay = 1
+#    iewToRenameDelay = 1
+#    commitToRenameDelay = 1
+#    commitToIEWDelay = 1
+#    fetchWidth = 3
+#    fetchBufferSize = 16
+#    fetchToDecodeDelay = 3
+#    decodeWidth = 3
+#    decodeToRenameDelay = 2
+#    renameWidth = 3
+#    renameToIEWDelay = 1
+#    issueToExecuteDelay = 1
+#    dispatchWidth = 6
+#    issueWidth = 8
+#    wbWidth = 8
+#    fuPool = O3_ARM_v7a_FUP()
+#    iewToCommitDelay = 1
+#    renameToROBDelay = 1
+#   commitWidth = 8
+#    squashWidth = 8
+#    trapLatency = 13
+#    backComSize = 5
+#    forwardComSize = 5
+#    numPhysIntRegs = 128
+#    numPhysFloatRegs = 192
+#    numIQEntries = 32
+#    numROBEntries = 40
+#    switched_out = False
+#    branchPred = O3_ARM_v7a_BP()
 
 # Instruction Cache
 class O3_ARM_v7a_ICache(BaseCache):
     hit_latency = 1
     response_latency = 1
-    mshrs = 2
-    tgts_per_mshr = 8
+    mshrs = 4
+    tgts_per_mshr = 16
     size = '32kB'
     assoc = 2
-    is_top_level = 'true'
+    is_top_level = True
+    prefetch_on_access = True
+    prefetcher = TaggedPrefetcher(degree = 2, latency = 1)
+#    hit_latency = 1
+#    response_latency = 1
+#    mshrs = 2
+#    tgts_per_mshr = 8
+#    size = '32kB'
+#    assoc = 2
+#    is_top_level = True
 
 # Data Cache
 class O3_ARM_v7a_DCache(BaseCache):
-    hit_latency = 2
+    hit_latency = 3
     response_latency = 2
-    mshrs = 6
-    tgts_per_mshr = 8
+    mshrs = 16
+    tgts_per_mshr = 16
     size = '32kB'
-    assoc = 2
+    assoc = 4
     write_buffers = 16
-    is_top_level = 'true'
+    is_top_level = True
+    prefetch_on_access = True
+    prefetcher = StridePrefetcher(degree = 2, latency = 1)
+#    hit_latency = 2
+#    response_latency = 2
+#    mshrs = 6
+#    tgts_per_mshr = 8
+#    size = '32kB'
+#    assoc = 2
+#    write_buffers = 16
+#    is_top_level = True
 
 # TLB Cache
 # Use a cache as a L2 TLB
@@ -170,22 +248,57 @@ class O3_ARM_v7aWalkCache(BaseCache):
     response_latency = 4
     mshrs = 6
     tgts_per_mshr = 8
-    size = '1kB'
-    assoc = 8
+    size = '512B'
+    assoc = 4
     write_buffers = 16
-    is_top_level = 'true'
+    is_top_level = True
+#    hit_latency = 4
+#    response_latency = 4
+#    mshrs = 6
+#    tgts_per_mshr = 8
+#    size = '1kB'
+#    assoc = 8
+#    write_buffers = 16
+#    is_top_level = True
 
 
 # L2 Cache
 class O3_ARM_v7aL2(BaseCache):
-    hit_latency = 12
-    response_latency = 12
+    hit_latency = 6
+    response_latency = 2
     mshrs = 16
-    tgts_per_mshr = 8
-    size = '1MB'
+    tgts_per_mshr = 16
+    size = '256kB'
+    assoc = 8
+    write_buffers = 8
+    prefetch_on_access = True
+    # Simple stride prefetcher
+    prefetcher = StridePrefetcher(degree=2, latency = 1)
+    # tags = RandomRepl()
+#    hit_latency = 12
+#    response_latency = 12
+#    mshrs = 16
+#    tgts_per_mshr = 8
+#    size = '1MB'
+#    assoc = 16
+#    write_buffers = 8
+#    prefetch_on_access = True
+#    # Simple stride prefetcher
+#    prefetcher = StridePrefetcher(degree=8, latency = 1)
+#    tags = RandomRepl()
+
+
+
+# L3 Cache
+class O3_ARM_v7aL3(BaseCache):
+    hit_latency = 14
+    response_latency = 10
+    mshrs = 16
+    tgts_per_mshr = 16
+    size = '4MB'
     assoc = 16
     write_buffers = 8
-    prefetch_on_access = 'true'
+    prefetch_on_access = True
     # Simple stride prefetcher
-    prefetcher = StridePrefetcher(degree=8, latency = 1)
-    tags = RandomRepl()
+    prefetcher = StridePrefetcher(degree=2, latency = 1)
+

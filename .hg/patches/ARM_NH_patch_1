@@ -1,0 +1,612 @@
+# HG changeset patch
+# Parent c093a4addfbc312634374ccc9d7d91f2b95bd24e
+ARM A7 configured to have the same resources as Nehalem
+
+diff -r c093a4addfbc configs/common/CacheConfig.py
+--- a/configs/common/CacheConfig.py	Tue Mar 17 18:41:34 2015 -0500
++++ b/configs/common/CacheConfig.py	Thu Apr 02 10:48:09 2015 -0500
+@@ -1,3 +1,4 @@
++
+ # Copyright (c) 2012-2013 ARM Limited
+ # All rights reserved
+ # 
+@@ -41,77 +42,67 @@
+ # Configure the M5 cache hierarchy config in one place
+ #
+ 
++
+ import m5
+ from m5.objects import *
+ from Caches import *
++from O3_ARM_v7a import *
+ 
+ def config_cache(options, system):
+     if options.cpu_type == "arm_detailed":
+-        try:
+-            from O3_ARM_v7a import *
+-        except:
+-            print "arm_detailed is unavailable. Did you compile the O3 model?"
+-            sys.exit(1)
++        #try:
++        #    from O3_ARM_v7a import *
++        #except:
++        #    print "arm_detailed is unavailable. Did you compile the O3 model?"
++        #    sys.exit(1)
+ 
+-        dcache_class, icache_class, l2_cache_class = \
+-            O3_ARM_v7a_DCache, O3_ARM_v7a_ICache, O3_ARM_v7aL2
+-    elif options.cpu_type == 'piledriver':
+-        try:
+-            from PileDriver import *
+-        except:
+-            print "piledriver is unavailable. Did you compile the O3 model?"
+-            sys.exit(1)
+-
+-        dcache_class, icache_class, l2_cache_class = \
+-            PileDriver_DCache, PileDriver_ICache, PileDriver_L2
+-
++        dcache_class = O3_ARM_v7a_DCache
++        icache_class = O3_ARM_v7a_ICache 
++        l2_cache_class = O3_ARM_v7aL2
++        l3_cache_class = O3_ARM_v7aL3
+     else:
+         dcache_class, icache_class, l2_cache_class = \
+             L1Cache, L1Cache, L2Cache
+ 
+     # Set the cache line size of the system
+     system.cache_line_size = options.cacheline_size
+-    if options.cpu_type == "piledriver":
+-        # For PileDriver we have specified l2 size in the configuration file
+-        # Also, I think bus width of "cpu to l2" is 64 bits but for now stick with 32, because I got an error and it may be from this
+-        system.l2 = l2_cache_class(clk_domain = system.cpu_clk_domain)
+-        system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
+-                                     width = 32)
+-        system.l2.cpu_side = system.tol2bus.master
+-        system.l2.mem_side = system.membus.slave
+ 
+-    if options.l2cache:
++    if ( options.l2cache or ( options.cpu_type == 'arm_detailed' ) ):
+         # Provide a clock for the L2 and the L1-to-L2 bus here as they
+         # are not connected using addTwoLevelCacheHierarchy. Use the
+         # same clock as the CPUs, and set the L1-to-L2 bus width to 32
+         # bytes (256 bits).
+-        system.l2 = l2_cache_class(clk_domain=system.cpu_clk_domain,
++        if options.cpu_type == "arm_detailed":
++            system.l3 = l3_cache_class(clk_domain=system.cpu_clk_domain)
++            system.tol3bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
++                                      width = 32)
++            system.l3.cpu_side = system.tol3bus.master
++            system.l3.mem_side = system.membus.slave
++
++
++        else:
++            system.l2 = l2_cache_class(clk_domain=system.cpu_clk_domain,
+                                    size=options.l2_size,
+                                    assoc=options.l2_assoc)
+-
+-        system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
++            system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
+                                       width = 32)
+-        system.l2.cpu_side = system.tol2bus.master
+-        system.l2.mem_side = system.membus.slave
++            system.l2.cpu_side = system.tol2bus.master
++            system.l2.mem_side = system.membus.slave
++ 
+ 
+     if options.memchecker:
+         system.memchecker = MemChecker()
+ 
+     for i in xrange(options.num_cpus):
+-        if options.cpu_type == "piledriver":
+-            icache = icache_class()
+-            dcache = dcache_class()
+-            if buildEnv['TARGET_ISA'] == 'x86':
+-                system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
+-                                                      PageTableWalkerCache(),
+-                                                      PageTableWalkerCache())
++        if options.caches:
++            if options.cpu_type == 'arm_detailed':
++                icache = icache_class()
++                dcache = dcache_class()
++                l2 = l2_cache_class()
+             else:
+-                system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
+-
+-        if options.caches:
+-            icache = icache_class(size=options.l1i_size,
++                icache = icache_class(size=options.l1i_size,
+                                   assoc=options.l1i_assoc)
+-            dcache = dcache_class(size=options.l1d_size,
++                dcache = dcache_class(size=options.l1d_size,
+                                   assoc=options.l1d_assoc)
+ 
+             if options.memchecker:
+@@ -135,6 +126,8 @@
+                 system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
+                                                       PageTableWalkerCache(),
+                                                       PageTableWalkerCache())
++            elif options.cpu_type == 'arm_detailed':
++                system.cpu[i].addTwoLevelCacheHierarchy(icache,dcache,l2)
+             else:
+                 system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
+ 
+@@ -145,9 +138,125 @@
+                 system.cpu[i].dcache_mon = dcache_mon
+ 
+         system.cpu[i].createInterruptController()
+-        if options.l2cache or options.cpu_type == "piledriver":
+-            system.cpu[i].connectAllPorts(system.tol2bus, system.membus)
++        if options.cpu_type == 'arm_detailed':
++            system.cpu[i].connectAllPorts(system.tol3bus, system.membus)
++        elif options.l2cache:
++            system.cpu[i].connectAllPorts(system.tol2bus, system.membus)    
+         else:
+             system.cpu[i].connectAllPorts(system.membus)
+ 
+     return system
++
++
++#import m5
++#from m5.objects import *
++#from Caches import *
++
++#def config_cache(options, system):
++#    if options.cpu_type == "arm_detailed":
++#        try:
++#            from O3_ARM_v7a import *
++#        except:
++#            print "arm_detailed is unavailable. Did you compile the O3 model?"
++#            sys.exit(1)
++
++#        dcache_class, icache_class, l2_cache_class = \
++#            O3_ARM_v7a_DCache, O3_ARM_v7a_ICache, O3_ARM_v7aL2
++#    elif options.cpu_type == 'piledriver':
++#        try:
++#            from PileDriver import *
++#        except:
++#            print "piledriver is unavailable. Did you compile the O3 model?"
++#            sys.exit(1)
++
++#        dcache_class, icache_class, l2_cache_class = \
++#            PileDriver_DCache, PileDriver_ICache, PileDriver_L2
++#
++#    else:
++#        dcache_class, icache_class, l2_cache_class = \
++#            L1Cache, L1Cache, L2Cache
++
++#    # Set the cache line size of the system
++#    system.cache_line_size = options.cacheline_size
++#    if options.cpu_type == "piledriver":
++#        # For PileDriver we have specified l2 size in the configuration file
++#        # Also, I think bus width of "cpu to l2" is 64 bits but for now stick with 32, because I got an error and it #may be from this
++#        system.l2 = l2_cache_class(clk_domain = system.cpu_clk_domain)
++#        system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
++#                                     width = 32)
++#        system.l2.cpu_side = system.tol2bus.master
++#        system.l2.mem_side = system.membus.slave
++
++#    if options.l2cache:
++        # Provide a clock for the L2 and the L1-to-L2 bus here as they
++        # are not connected using addTwoLevelCacheHierarchy. Use the
++        # same clock as the CPUs, and set the L1-to-L2 bus width to 32
++        # bytes (256 bits).
++        # system.l2 = l2_cache_class(clk_domain=system.cpu_clk_domain,
++#        system.l2 = l2_cache_class(clk_domain=system.clk_domain_const, # lokeshjindal15
++#                                   size=options.l2_size,
++#                                   assoc=options.l2_assoc)
++
++        #system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
++#        system.tol2bus = CoherentXBar(clk_domain = system.clk_domain_const, # lokeshjindal15
++#                                      width = 32)
++#        system.l2.cpu_side = system.tol2bus.master
++#        system.l2.mem_side = system.membus.slave
++
++#    if options.memchecker:
++#        system.memchecker = MemChecker()
++
++#    for i in xrange(options.num_cpus):
++#        if options.cpu_type == "piledriver":
++#            icache = icache_class()
++#            dcache = dcache_class()
++#            if buildEnv['TARGET_ISA'] == 'x86':
++#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
++#                                                      PageTableWalkerCache(),
++#                                                      PageTableWalkerCache())
++#            else:
++#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
++
++#        if options.caches:
++#            icache = icache_class(size=options.l1i_size,
++#                                  assoc=options.l1i_assoc)
++#            dcache = dcache_class(size=options.l1d_size,
++#                                  assoc=options.l1d_assoc)
++#
++#            if options.memchecker:
++#                dcache_mon = MemCheckerMonitor(warn_only=True)
++#                dcache_real = dcache
++
++                # Do not pass the memchecker into the constructor of
++                # MemCheckerMonitor, as it would create a copy; we require
++                # exactly one MemChecker instance.
++#                dcache_mon.memchecker = system.memchecker
++
++                # Connect monitor
++#                dcache_mon.mem_side = dcache.cpu_side
++
++                # Let CPU connect to monitors
++#                dcache = dcache_mon
++
++            # When connecting the caches, the clock is also inherited
++            # from the CPU in question
++#            if buildEnv['TARGET_ISA'] == 'x86':
++#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
++#                                                      PageTableWalkerCache(),
++#                                                      PageTableWalkerCache())
++#            else:
++#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
++
++#            if options.memchecker:
++                # The mem_side ports of the caches haven't been connected yet.
++                # Make sure connectAllPorts connects the right objects.
++#                system.cpu[i].dcache = dcache_real
++#                system.cpu[i].dcache_mon = dcache_mon
++
++#        system.cpu[i].createInterruptController()
++#        if options.l2cache or options.cpu_type == "piledriver":
++#            system.cpu[i].connectAllPorts(system.tol2bus, system.membus)
++#        else:
++#            system.cpu[i].connectAllPorts(system.membus)
++
++#    return system
+diff -r c093a4addfbc configs/common/O3_ARM_v7a.py
+--- a/configs/common/O3_ARM_v7a.py	Tue Mar 17 18:41:34 2015 -0500
++++ b/configs/common/O3_ARM_v7a.py	Thu Apr 02 10:48:09 2015 -0500
+@@ -29,54 +29,57 @@
+ 
+ from m5.objects import *
+ 
+-# Simple ALU Instructions have a latency of 1
+-class O3_ARM_v7a_Simple_Int(FUDesc):
+-    opList = [ OpDesc(opClass='IntAlu', opLat=1) ]
+-    count = 2
+-
+-# Complex ALU instructions have a variable latencies
+-class O3_ARM_v7a_Complex_Int(FUDesc):
+-    opList = [ OpDesc(opClass='IntMult', opLat=3, issueLat=1),
+-               OpDesc(opClass='IntDiv', opLat=12, issueLat=12),
+-               OpDesc(opClass='IprAccess', opLat=3, issueLat=1) ]
++class Port0_FU(FUDesc):
++    opList = [ OpDesc(opClass="IntAlu", opLat=1),
++               OpDesc(opClass="IntDiv", opLat=20, issueLat=20),
++               OpDesc(opClass="FloatMult", opLat=5),
++               OpDesc(opClass="FloatCvt", opLat=3),
++               OpDesc(opClass="FloatDiv", opLat=10),
++               OpDesc(opClass="FloatSqrt", opLat=10),
++               OpDesc(opClass="SimdFloatMult", opLat=5),
++               OpDesc(opClass="SimdFloatMultAcc", opLat=6),
++               OpDesc(opClass="SimdFloatCvt", opLat=3),
++               OpDesc(opClass="SimdFloatDiv", opLat=10),
++               OpDesc(opClass="SimdFloatSqrt", opLat=10),
++               OpDesc(opClass="SimdAddAcc", opLat=1),
++               OpDesc(opClass="SimdAdd", opLat=1),
++               OpDesc(opClass="SimdAlu", opLat=1),
++               OpDesc(opClass="SimdShiftAcc", opLat=1),
++               OpDesc(opClass="SimdShift", opLat=1) ]
+     count = 1
+ 
++class Port1_FU(FUDesc):
++    opList = [ OpDesc(opClass="IntAlu", opLat=1),
++               OpDesc(opClass="IntMult", opLat=3),
++               OpDesc(opClass="IprAccess", opLat=3),
++               OpDesc(opClass="FloatAdd", opLat=3),
++               OpDesc(opClass="SimdFloatAlu", opLat=3),
++               OpDesc(opClass="SimdFloatAdd", opLat=3),
++               OpDesc(opClass="SimdMult", opLat=3),
++               OpDesc(opClass="SimdMultAcc", opLat=4),
++               OpDesc(opClass="SimdSqrt", opLat=4),
++               OpDesc(opClass="SimdCvt", opLat=3) ]
++    count = 1
+ 
+-# Floating point and SIMD instructions
+-class O3_ARM_v7a_FP(FUDesc):
+-    opList = [ OpDesc(opClass='SimdAdd', opLat=4),
+-               OpDesc(opClass='SimdAddAcc', opLat=4),
+-               OpDesc(opClass='SimdAlu', opLat=4),
+-               OpDesc(opClass='SimdCmp', opLat=4),
+-               OpDesc(opClass='SimdCvt', opLat=3),
+-               OpDesc(opClass='SimdMisc', opLat=3),
+-               OpDesc(opClass='SimdMult',opLat=5),
+-               OpDesc(opClass='SimdMultAcc',opLat=5),
+-               OpDesc(opClass='SimdShift',opLat=3),
+-               OpDesc(opClass='SimdShiftAcc', opLat=3),
+-               OpDesc(opClass='SimdSqrt', opLat=9),
+-               OpDesc(opClass='SimdFloatAdd',opLat=5),
+-               OpDesc(opClass='SimdFloatAlu',opLat=5),
+-               OpDesc(opClass='SimdFloatCmp', opLat=3),
+-               OpDesc(opClass='SimdFloatCvt', opLat=3),
+-               OpDesc(opClass='SimdFloatDiv', opLat=3),
+-               OpDesc(opClass='SimdFloatMisc', opLat=3),
+-               OpDesc(opClass='SimdFloatMult', opLat=3),
+-               OpDesc(opClass='SimdFloatMultAcc',opLat=1),
+-               OpDesc(opClass='SimdFloatSqrt', opLat=9),
+-               OpDesc(opClass='FloatAdd', opLat=5),
+-               OpDesc(opClass='FloatCmp', opLat=5),
+-               OpDesc(opClass='FloatCvt', opLat=5),
+-               OpDesc(opClass='FloatDiv', opLat=9, issueLat=9),
+-               OpDesc(opClass='FloatSqrt', opLat=33, issueLat=33),
+-               OpDesc(opClass='FloatMult', opLat=4) ]
+-    count = 2
++class Port5_FU(FUDesc):
++    opList = [ OpDesc(opClass="IntAlu", opLat=1),
++               OpDesc(opClass="FloatCmp", opLat=1),
++               OpDesc(opClass="SimdFloatCmp", opLat=3),
++               OpDesc(opClass="SimdFloatMisc", opLat=3),
++               OpDesc(opClass="SimdCmp", opLat=1),
++               OpDesc(opClass="SimdMisc", opLat=3),
++               OpDesc(opClass="SimdAdd", opLat=1),
++               OpDesc(opClass="SimdAddAcc", opLat=1),
++               OpDesc(opClass="SimdShiftAcc", opLat=1),
++               OpDesc(opClass="SimdShift", opLat=1),
++               OpDesc(opClass="SimdAlu", opLat=1) ]
++    count = 1
+ 
+ 
+ # Load/Store Units
+ class O3_ARM_v7a_Load(FUDesc):
+     opList = [ OpDesc(opClass='MemRead',opLat=2) ]
+-    count = 1
++    count = 4
+ 
+ class O3_ARM_v7a_Store(FUDesc):
+     opList = [OpDesc(opClass='MemWrite',opLat=2) ]
+@@ -84,12 +87,14 @@
+ 
+ # Functional Units for this CPU
+ class O3_ARM_v7a_FUP(FUPool):
+-    FUList = [O3_ARM_v7a_Simple_Int(), O3_ARM_v7a_Complex_Int(),
+-              O3_ARM_v7a_Load(), O3_ARM_v7a_Store(), O3_ARM_v7a_FP()]
++    FUList = [Port0_FU(), Port1_FU(),
++              O3_ARM_v7a_Load(), O3_ARM_v7a_Store(), Port5_FU()]
+ 
+ # Bi-Mode Branch Predictor
+ class O3_ARM_v7a_BP(BranchPredictor):
+-    predType = "bi-mode"
++    predType = "tournament"
++    localCtrBits = 2
++    localHistoryTableSize = 64
+     globalPredictorSize = 8192
+     globalCtrBits = 2
+     choicePredictorSize = 8192
+@@ -98,10 +103,21 @@
+     BTBTagSize = 18
+     RASSize = 16
+     instShiftAmt = 2
++#    predType = "bi-mode"
++#    globalPredictorSize = 8192
++#    globalCtrBits = 2
++#    choicePredictorSize = 8192
++#    choiceCtrBits = 2
++#    BTBEntries = 2048
++#    BTBTagSize = 18
++#    RASSize = 16
++#    instShiftAmt = 2
+ 
+ class O3_ARM_v7a_3(DerivO3CPU):
+-    LQEntries = 16
+-    SQEntries = 16
++    LQEntries = 72
++#   LQEntries = 72   based on nehalem.cfg
++    SQEntries = 42
++#   SQEntries = 42   based on nehalem.cfg
+     LSQDepCheckShift = 0
+     LFSTSize = 1024
+     SSITSize = 1024
+@@ -115,53 +131,115 @@
+     iewToRenameDelay = 1
+     commitToRenameDelay = 1
+     commitToIEWDelay = 1
+-    fetchWidth = 3
+-    fetchBufferSize = 16
+-    fetchToDecodeDelay = 3
+-    decodeWidth = 3
++    fetchWidth = 4
++ #   fetchBufferSize = 16
++    fetchToDecodeDelay = 2
++    decodeWidth = 4
+     decodeToRenameDelay = 2
+-    renameWidth = 3
+-    renameToIEWDelay = 1
++    renameWidth = 4
++    renameToIEWDelay = 2
+     issueToExecuteDelay = 1
+-    dispatchWidth = 6
+-    issueWidth = 8
+-    wbWidth = 8
++    dispatchWidth = 4
++    issueWidth = 5
++    wbWidth = 5
++#    wbDepth = 1       Not supported
+     fuPool = O3_ARM_v7a_FUP()
+     iewToCommitDelay = 1
+     renameToROBDelay = 1
+-    commitWidth = 8
+-    squashWidth = 8
++    commitWidth = 4
++    squashWidth = 16
+     trapLatency = 13
+-    backComSize = 5
++    backComSize = 10
+     forwardComSize = 5
+-    numPhysIntRegs = 128
+-    numPhysFloatRegs = 192
+-    numIQEntries = 32
+-    numROBEntries = 40
+-
++    numPhysIntRegs = 256
++    numPhysFloatRegs = 256
++    numIQEntries = 36
++    numROBEntries = 128
++#    numIQEntries = 64           based on nehalem.cfg
++#    numROBEntries = 192         based on nehalem.cfg
+     switched_out = False
+     branchPred = O3_ARM_v7a_BP()
+ 
++#    LQEntries = 16
++#    SQEntries = 16
++#    LSQDepCheckShift = 0
++#    LFSTSize = 1024
++#    SSITSize = 1024
++#    decodeToFetchDelay = 1
++#    renameToFetchDelay = 1
++#    iewToFetchDelay = 1
++#    commitToFetchDelay = 1
++#    renameToDecodeDelay = 1
++#    iewToDecodeDelay = 1
++#    commitToDecodeDelay = 1
++#    iewToRenameDelay = 1
++#    commitToRenameDelay = 1
++#    commitToIEWDelay = 1
++#    fetchWidth = 3
++#    fetchBufferSize = 16
++#    fetchToDecodeDelay = 3
++#    decodeWidth = 3
++#    decodeToRenameDelay = 2
++#    renameWidth = 3
++#    renameToIEWDelay = 1
++#    issueToExecuteDelay = 1
++#    dispatchWidth = 6
++#    issueWidth = 8
++#    wbWidth = 8
++#    fuPool = O3_ARM_v7a_FUP()
++#    iewToCommitDelay = 1
++#    renameToROBDelay = 1
++#   commitWidth = 8
++#    squashWidth = 8
++#    trapLatency = 13
++#    backComSize = 5
++#    forwardComSize = 5
++#    numPhysIntRegs = 128
++#    numPhysFloatRegs = 192
++#    numIQEntries = 32
++#    numROBEntries = 40
++#    switched_out = False
++#    branchPred = O3_ARM_v7a_BP()
++
+ # Instruction Cache
+ class O3_ARM_v7a_ICache(BaseCache):
+     hit_latency = 1
+     response_latency = 1
+-    mshrs = 2
+-    tgts_per_mshr = 8
++    mshrs = 4
++    tgts_per_mshr = 16
+     size = '32kB'
+     assoc = 2
+-    is_top_level = 'true'
++    is_top_level = True
++    prefetch_on_access = True
++    prefetcher = TaggedPrefetcher(degree = 2, latency = 1)
++#    hit_latency = 1
++#    response_latency = 1
++#    mshrs = 2
++#    tgts_per_mshr = 8
++#    size = '32kB'
++#    assoc = 2
++#    is_top_level = True
+ 
+ # Data Cache
+ class O3_ARM_v7a_DCache(BaseCache):
+-    hit_latency = 2
++    hit_latency = 3
+     response_latency = 2
+-    mshrs = 6
+-    tgts_per_mshr = 8
++    mshrs = 16
++    tgts_per_mshr = 16
+     size = '32kB'
+-    assoc = 2
++    assoc = 4
+     write_buffers = 16
+-    is_top_level = 'true'
++    is_top_level = True
++    prefetch_on_access = True
++    prefetcher = StridePrefetcher(degree = 2, latency = 1)
++#    hit_latency = 2
++#    response_latency = 2
++#    mshrs = 6
++#    tgts_per_mshr = 8
++#    size = '32kB'
++#    assoc = 2
++#    write_buffers = 16
++#    is_top_level = True
+ 
+ # TLB Cache
+ # Use a cache as a L2 TLB
+@@ -170,22 +248,57 @@
+     response_latency = 4
+     mshrs = 6
+     tgts_per_mshr = 8
+-    size = '1kB'
+-    assoc = 8
++    size = '512B'
++    assoc = 4
+     write_buffers = 16
+-    is_top_level = 'true'
++    is_top_level = True
++#    hit_latency = 4
++#    response_latency = 4
++#    mshrs = 6
++#    tgts_per_mshr = 8
++#    size = '1kB'
++#    assoc = 8
++#    write_buffers = 16
++#    is_top_level = True
+ 
+ 
+ # L2 Cache
+ class O3_ARM_v7aL2(BaseCache):
+-    hit_latency = 12
+-    response_latency = 12
++    hit_latency = 6
++    response_latency = 2
+     mshrs = 16
+-    tgts_per_mshr = 8
+-    size = '1MB'
++    tgts_per_mshr = 16
++    size = '256kB'
++    assoc = 8
++    write_buffers = 8
++    prefetch_on_access = True
++    # Simple stride prefetcher
++    prefetcher = StridePrefetcher(degree=2, latency = 1)
++    # tags = RandomRepl()
++#    hit_latency = 12
++#    response_latency = 12
++#    mshrs = 16
++#    tgts_per_mshr = 8
++#    size = '1MB'
++#    assoc = 16
++#    write_buffers = 8
++#    prefetch_on_access = True
++#    # Simple stride prefetcher
++#    prefetcher = StridePrefetcher(degree=8, latency = 1)
++#    tags = RandomRepl()
++
++
++
++# L3 Cache
++class O3_ARM_v7aL3(BaseCache):
++    hit_latency = 14
++    response_latency = 10
++    mshrs = 16
++    tgts_per_mshr = 16
++    size = '4MB'
+     assoc = 16
+     write_buffers = 8
+-    prefetch_on_access = 'true'
++    prefetch_on_access = True
+     # Simple stride prefetcher
+-    prefetcher = StridePrefetcher(degree=8, latency = 1)
+-    tags = RandomRepl()
++    prefetcher = StridePrefetcher(degree=2, latency = 1)
++

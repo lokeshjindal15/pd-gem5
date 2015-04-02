@@ -1,3 +1,4 @@
+
 # Copyright (c) 2012-2013 ARM Limited
 # All rights reserved
 # 
@@ -41,79 +42,67 @@
 # Configure the M5 cache hierarchy config in one place
 #
 
+
 import m5
 from m5.objects import *
 from Caches import *
+from O3_ARM_v7a import *
 
 def config_cache(options, system):
     if options.cpu_type == "arm_detailed":
-        try:
-            from O3_ARM_v7a import *
-        except:
-            print "arm_detailed is unavailable. Did you compile the O3 model?"
-            sys.exit(1)
+        #try:
+        #    from O3_ARM_v7a import *
+        #except:
+        #    print "arm_detailed is unavailable. Did you compile the O3 model?"
+        #    sys.exit(1)
 
-        dcache_class, icache_class, l2_cache_class = \
-            O3_ARM_v7a_DCache, O3_ARM_v7a_ICache, O3_ARM_v7aL2
-    elif options.cpu_type == 'piledriver':
-        try:
-            from PileDriver import *
-        except:
-            print "piledriver is unavailable. Did you compile the O3 model?"
-            sys.exit(1)
-
-        dcache_class, icache_class, l2_cache_class = \
-            PileDriver_DCache, PileDriver_ICache, PileDriver_L2
-
+        dcache_class = O3_ARM_v7a_DCache
+        icache_class = O3_ARM_v7a_ICache
+        l2_cache_class = O3_ARM_v7aL2
+        l3_cache_class = O3_ARM_v7aL3
     else:
         dcache_class, icache_class, l2_cache_class = \
             L1Cache, L1Cache, L2Cache
 
     # Set the cache line size of the system
     system.cache_line_size = options.cacheline_size
-    if options.cpu_type == "piledriver":
-        # For PileDriver we have specified l2 size in the configuration file
-        # Also, I think bus width of "cpu to l2" is 64 bits but for now stick with 32, because I got an error and it may be from this
-        system.l2 = l2_cache_class(clk_domain = system.cpu_clk_domain)
-        system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
-                                     width = 32)
-        system.l2.cpu_side = system.tol2bus.master
-        system.l2.mem_side = system.membus.slave
 
-    if options.l2cache:
+    if ( options.l2cache or ( options.cpu_type == 'arm_detailed' ) ):
         # Provide a clock for the L2 and the L1-to-L2 bus here as they
         # are not connected using addTwoLevelCacheHierarchy. Use the
         # same clock as the CPUs, and set the L1-to-L2 bus width to 32
         # bytes (256 bits).
-        # system.l2 = l2_cache_class(clk_domain=system.cpu_clk_domain,
-        system.l2 = l2_cache_class(clk_domain=system.clk_domain_const, # lokeshjindal15
+        if options.cpu_type == "arm_detailed":
+            system.l3 = l3_cache_class(clk_domain=system.cpu_clk_domain)
+            system.tol3bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
+                                      width = 32)
+            system.l3.cpu_side = system.tol3bus.master
+            system.l3.mem_side = system.membus.slave
+
+
+        else:
+            system.l2 = l2_cache_class(clk_domain=system.cpu_clk_domain,
                                    size=options.l2_size,
                                    assoc=options.l2_assoc)
-
-        #system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
-        system.tol2bus = CoherentXBar(clk_domain = system.clk_domain_const, # lokeshjindal15
+            system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
                                       width = 32)
-        system.l2.cpu_side = system.tol2bus.master
-        system.l2.mem_side = system.membus.slave
+            system.l2.cpu_side = system.tol2bus.master
+            system.l2.mem_side = system.membus.slave
+
 
     if options.memchecker:
         system.memchecker = MemChecker()
 
     for i in xrange(options.num_cpus):
-        if options.cpu_type == "piledriver":
-            icache = icache_class()
-            dcache = dcache_class()
-            if buildEnv['TARGET_ISA'] == 'x86':
-                system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
-                                                      PageTableWalkerCache(),
-                                                      PageTableWalkerCache())
-            else:
-                system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
-
         if options.caches:
-            icache = icache_class(size=options.l1i_size,
+            if options.cpu_type == 'arm_detailed':
+                icache = icache_class()
+                dcache = dcache_class()
+                l2 = l2_cache_class()
+            else:
+                icache = icache_class(size=options.l1i_size,
                                   assoc=options.l1i_assoc)
-            dcache = dcache_class(size=options.l1d_size,
+                dcache = dcache_class(size=options.l1d_size,
                                   assoc=options.l1d_assoc)
 
             if options.memchecker:
@@ -137,6 +126,8 @@ def config_cache(options, system):
                 system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
                                                       PageTableWalkerCache(),
                                                       PageTableWalkerCache())
+            elif options.cpu_type == 'arm_detailed':
+                system.cpu[i].addTwoLevelCacheHierarchy(icache,dcache,l2)
             else:
                 system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
 
@@ -147,9 +138,125 @@ def config_cache(options, system):
                 system.cpu[i].dcache_mon = dcache_mon
 
         system.cpu[i].createInterruptController()
-        if options.l2cache or options.cpu_type == "piledriver":
+        if options.cpu_type == 'arm_detailed':
+            system.cpu[i].connectAllPorts(system.tol3bus, system.membus)
+        elif options.l2cache:
             system.cpu[i].connectAllPorts(system.tol2bus, system.membus)
         else:
             system.cpu[i].connectAllPorts(system.membus)
 
     return system
+
+
+#import m5
+#from m5.objects import *
+#from Caches import *
+
+#def config_cache(options, system):
+#    if options.cpu_type == "arm_detailed":
+#        try:
+#            from O3_ARM_v7a import *
+#        except:
+#            print "arm_detailed is unavailable. Did you compile the O3 model?"
+#            sys.exit(1)
+
+#        dcache_class, icache_class, l2_cache_class = \
+#            O3_ARM_v7a_DCache, O3_ARM_v7a_ICache, O3_ARM_v7aL2
+#    elif options.cpu_type == 'piledriver':
+#        try:
+#            from PileDriver import *
+#        except:
+#            print "piledriver is unavailable. Did you compile the O3 model?"
+#            sys.exit(1)
+
+#        dcache_class, icache_class, l2_cache_class = \
+#            PileDriver_DCache, PileDriver_ICache, PileDriver_L2
+#
+#    else:
+#        dcache_class, icache_class, l2_cache_class = \
+#            L1Cache, L1Cache, L2Cache
+
+#    # Set the cache line size of the system
+#    system.cache_line_size = options.cacheline_size
+#    if options.cpu_type == "piledriver":
+#        # For PileDriver we have specified l2 size in the configuration file
+#        # Also, I think bus width of "cpu to l2" is 64 bits but for now stick with 32, because I got an error and it #may be from this
+#        system.l2 = l2_cache_class(clk_domain = system.cpu_clk_domain)
+#        system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
+#                                     width = 32)
+#        system.l2.cpu_side = system.tol2bus.master
+#        system.l2.mem_side = system.membus.slave
+
+#    if options.l2cache:
+        # Provide a clock for the L2 and the L1-to-L2 bus here as they
+        # are not connected using addTwoLevelCacheHierarchy. Use the
+        # same clock as the CPUs, and set the L1-to-L2 bus width to 32
+        # bytes (256 bits).
+        # system.l2 = l2_cache_class(clk_domain=system.cpu_clk_domain,
+#        system.l2 = l2_cache_class(clk_domain=system.clk_domain_const, # lokeshjindal15
+#                                   size=options.l2_size,
+#                                   assoc=options.l2_assoc)
+
+        #system.tol2bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
+#        system.tol2bus = CoherentXBar(clk_domain = system.clk_domain_const, # lokeshjindal15
+#                                      width = 32)
+#        system.l2.cpu_side = system.tol2bus.master
+#        system.l2.mem_side = system.membus.slave
+
+#    if options.memchecker:
+#        system.memchecker = MemChecker()
+
+#    for i in xrange(options.num_cpus):
+#        if options.cpu_type == "piledriver":
+#            icache = icache_class()
+#            dcache = dcache_class()
+#            if buildEnv['TARGET_ISA'] == 'x86':
+#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
+#                                                      PageTableWalkerCache(),
+#                                                      PageTableWalkerCache())
+#            else:
+#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
+
+#        if options.caches:
+#            icache = icache_class(size=options.l1i_size,
+#                                  assoc=options.l1i_assoc)
+#            dcache = dcache_class(size=options.l1d_size,
+#                                  assoc=options.l1d_assoc)
+#
+#            if options.memchecker:
+#                dcache_mon = MemCheckerMonitor(warn_only=True)
+#                dcache_real = dcache
+
+                # Do not pass the memchecker into the constructor of
+                # MemCheckerMonitor, as it would create a copy; we require
+                # exactly one MemChecker instance.
+#                dcache_mon.memchecker = system.memchecker
+
+                # Connect monitor
+#                dcache_mon.mem_side = dcache.cpu_side
+
+                # Let CPU connect to monitors
+#                dcache = dcache_mon
+
+            # When connecting the caches, the clock is also inherited
+            # from the CPU in question
+#            if buildEnv['TARGET_ISA'] == 'x86':
+#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache,
+#                                                      PageTableWalkerCache(),
+#                                                      PageTableWalkerCache())
+#            else:
+#                system.cpu[i].addPrivateSplitL1Caches(icache, dcache)
+
+#            if options.memchecker:
+                # The mem_side ports of the caches haven't been connected yet.
+                # Make sure connectAllPorts connects the right objects.
+#                system.cpu[i].dcache = dcache_real
+#                system.cpu[i].dcache_mon = dcache_mon
+
+#        system.cpu[i].createInterruptController()
+#        if options.l2cache or options.cpu_type == "piledriver":
+#            system.cpu[i].connectAllPorts(system.tol2bus, system.membus)
+#        else:
+#            system.cpu[i].connectAllPorts(system.membus)
+
+#    return system
