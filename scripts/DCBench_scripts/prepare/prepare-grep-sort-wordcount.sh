@@ -95,7 +95,7 @@ echo "************ done with prepare-grep ***********"
 
 echo "************ Actually done with all 3 grep-sort-wordcount since using new tux0.img***********"
 echo "Doing ls on distributed file system..."
-$HADOOP_HOME/bin/hadoop dfs -ls /cloudrank-out/
+$HADOOP_HOME/bin/hadoop dfs -ls /cloudrank-data/
 echo "*********************************************************************************************"
 
 # Checkpoint the first execution

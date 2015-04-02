@@ -49,19 +49,19 @@ use File::Basename;
 ######################################################
 # Set the following parameters that will be used to calculate
 # utilization of FUs
-my $IntPhyUnits = 1; # generally $IntPhyUnits == $IntAluUnits since every IntPhyUnit would be capable of doing IntAlut op and some other Int Op
-my $FloatPhyUnits = 1; # generally $FloatPhyUnits == $FloatUnits
-my $MemPhyUnits = 1; # generally $MemPhyUnits == $MemUnits
+my $IntPhyUnits = 6 + 2; # generally $IntPhyUnits == $IntAluUnits since every IntPhyUnit would be capable of doing IntAlut op and some other Int Op
+my $FloatPhyUnits = 4 + 2; # generally $FloatPhyUnits == $FloatUnits
+my $MemPhyUnits = 4; # generally $MemPhyUnits == $MemUnits
 
 my $IntAluUnits = 1;
 my $IntAluLatencyFac = 1;
 my $IntMultUnits = 1;# no. of physical FUs capable of doing IntMult
-my $IntMultLatencyFac = 5; # scaling factor to account for multicycle op; decided by OpCalss's issue latency and Op latency
+my $IntMultLatencyFac = 3; # scaling factor to account for multicycle op; decided by OpCalss's issue latency and Op latency
 my $IntDivUnits = 1;
 my $IntDivLatencyFac = 20;
 
 my $FloatUnits = 1; # our benchmarks are not FP intensive so let's take an average number for overall latency
-my $FloatLatencyFac = 20;# this will be something > 10
+my $FloatLatencyFac = 2;# this will be 
 
 # Calculations below ignore the Simd insts
 my $SimdUnits = 1; # our benchmarks are not SimD intensive so let's take an average number for overall latency
@@ -69,6 +69,8 @@ my $SimdLatencyFac = 10; #
 
 my $MemUnits = 1;
 my $MemLatencyFac = 1;
+
+my $SYS_ETH_MAX_BW = 160000000 * 2; # 160Mbps
 #######################################################
 
 my $test_name   = 'test';
@@ -361,6 +363,7 @@ while ($STATS_FILE_I < $num_stats_file)
 	my @sys_eth_rxbytes;
 	my @sys_eth_bytes = 0;
 	my @sys_eth_txbytes;
+	my @sys_eth_bw = 0;
 	my @proc_freq;
 	my @proc_int_busy_cycles;
 	my @proc_num_cycles;
@@ -397,6 +400,7 @@ while ($STATS_FILE_I < $num_stats_file)
 			$num++;
 			}
 			$sys_eth_bytes[$part -1] = 0;# not every phase has this parameter dumped in stats.txt
+			$sys_eth_bw[$part -1] = 0;# not every phase has this parameter dumped in stats.txt
 
 			print "Creating file $stats_file.$part\n";
 			open OUTFILE, "> $stats_file.$part";
@@ -433,11 +437,18 @@ while ($STATS_FILE_I < $num_stats_file)
 				$sys_eth_rxbytes[$part -1] = $1;
 				$sys_eth_bytes[$part - 1] += $sys_eth_rxbytes[$part -1];
 			}
+			if ($line =~ /.*system.realview.ethernet.totBandwidth\s+(\d+)/)
+			{
+				$sys_eth_bw[$part - 1] = $1;
+				$sys_eth_bw[$part - 1] /= $SYS_ETH_MAX_BW;
+				$sys_eth_bw[$part - 1] *= 100;
+			}
 
 			if ($line =~ /.*cpu_clk_domain.clock\s+(\d+)/)
 			{
 				# calculate no. of cycles simulated for this processor
 				$proc_num_cycles[0][$part - 1] = $sim_ticks[$part - 1] / $1; # since 1 $1 gives no. of ticks in 1 cpu cycle
+				print "proc_num_cycles cpu0: $proc_num_cycles[0][$part - 1]\n";
 
 				$proc_clk[0][$part - 1] = $1;
 				#print "proc_clk $proc_clk[$part - 1]\n";
@@ -450,6 +461,7 @@ while ($STATS_FILE_I < $num_stats_file)
 			if ($line =~ /.*cpu_clk_domain1.clock\s+(\d+)/)
 			{
 				$proc_num_cycles[1][$part - 1] = $sim_ticks[$part - 1] / $1; # since 1 $1 gives no. of ticks in 1 cpu cycle
+				print "proc_num_cycles cpu1: $proc_num_cycles[1][$part - 1]\n";
 
 				$proc_clk[1][$part - 1] = $1;
 				#print "proc_clk $proc_clk[$part - 1]\n";
@@ -462,6 +474,7 @@ while ($STATS_FILE_I < $num_stats_file)
 			if ($line =~ /.*cpu_clk_domain2.clock\s+(\d+)/)
 			{
 				$proc_num_cycles[2][$part - 1] = $sim_ticks[$part - 1] / $1; # since 1 $1 gives no. of ticks in 1 cpu cycle
+				print "proc_num_cycles cpu2: $proc_num_cycles[2][$part - 1]\n";
 
 				$proc_clk[2][$part - 1] = $1;
 				#print "proc_clk $proc_clk[$part - 1]\n";
@@ -726,16 +739,24 @@ while ($STATS_FILE_I < $num_stats_file)
 	my $cum_proc_sim_seconds = 0;
 	my $plot_sim_sec = 0;
 	my $totalp = 0;
+	
+	my @allcores_freq;	
+	my @allcores_intutil;	
+	my @allcores_floatutil;	
+	my @allcores_memutil;	
+
 	open F10, ">$out_dir/timefreq.csv" or die $!;
 	print F10 "SimSec,Core0Freq,Core1Freq,Core2Freq,Core3Freq\n";
 	open F0, ">$out_dir/cum.core0.csv" or die $!;
-	print F0 "CumSimSec,Core0Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	print F0 "CumSimSec,Core0Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW\n";
 	open F1, ">$out_dir/cum.core1.csv" or die $!;
-	print F1 "CumSimSec,Core1Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	print F1 "CumSimSec,Core1Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW\n";
 	open F2, ">$out_dir/cum.core2.csv" or die $!;
-	print F2 "CumSimSec,Core2Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	print F2 "CumSimSec,Core2Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW\n";
 	open F3, ">$out_dir/cum.core3.csv" or die $!;
-	print F3 "CumSimSec,Core3Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes\n";
+	print F3 "CumSimSec,Core3Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW\n";
+	open F4, ">$out_dir/cum.allcores.csv" or die $!;
+	print F3 "CumSimSec,Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW\n";
 	#open F6, ">$out_dir/cum.timedynp.csv" or die $!;
 	#print F6 "cum_proc_sim_seconds,proc_dynp0,proc_dynp1,proc_dynp2,proc_dynp3\n";
 	while($iter < ($MAXPHASES -1))
@@ -746,17 +767,27 @@ while ($STATS_FILE_I < $num_stats_file)
 		#				+ $DIRECTORY_POWER + $NOC_POWER);
 		print F10 "$proc_sim_seconds[$iter],$proc_freq[0][$iter],$proc_freq[1][$iter],$proc_freq[2][$iter],$proc_freq[3][$iter]\n";
 		$plot_sim_sec = $cum_proc_sim_seconds + 0.00001;
-		print F0 "$plot_sim_sec,$proc_freq[0][$iter], ,$proc_int_util[0][$iter],$proc_float_util[0][$iter],$proc_mem_util[0][$iter], ,$sys_eth_bytes[$iter]\n";
-		print F1 "$plot_sim_sec,$proc_freq[1][$iter], ,$proc_int_util[1][$iter],$proc_float_util[1][$iter],$proc_mem_util[1][$iter], ,$sys_eth_bytes[$iter]\n";
-		print F2 "$plot_sim_sec,$proc_freq[2][$iter], ,$proc_int_util[2][$iter],$proc_float_util[2][$iter],$proc_mem_util[2][$iter], ,$sys_eth_bytes[$iter]\n";
-		print F3 "$plot_sim_sec,$proc_freq[3][$iter], ,$proc_int_util[3][$iter],$proc_float_util[3][$iter],$proc_mem_util[3][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F0 "$plot_sim_sec,$proc_freq[0][$iter], ,$proc_int_util[0][$iter],$proc_float_util[0][$iter],$proc_mem_util[0][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		print F1 "$plot_sim_sec,$proc_freq[1][$iter], ,$proc_int_util[1][$iter],$proc_float_util[1][$iter],$proc_mem_util[1][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		print F2 "$plot_sim_sec,$proc_freq[2][$iter], ,$proc_int_util[2][$iter],$proc_float_util[2][$iter],$proc_mem_util[2][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		print F3 "$plot_sim_sec,$proc_freq[3][$iter], ,$proc_int_util[3][$iter],$proc_float_util[3][$iter],$proc_mem_util[3][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		
+		$allcores_freq[$iter] = ($proc_freq[0][$iter] + $proc_freq[1][$iter] + $proc_freq[2][$iter] + $proc_freq[3][$iter])/4;
+		$allcores_intutil[$iter] = ($proc_int_util[0][$iter] + $proc_int_util[1][$iter] + $proc_int_util[2][$iter] + $proc_int_util[3][$iter])/4;
+		$allcores_floatutil[$iter] = ($proc_float_util[0][$iter] + $proc_float_util[1][$iter] + $proc_float_util[2][$iter] + $proc_float_util[3][$iter])/4;
+		$allcores_memutil[$iter] = ($proc_mem_util[0][$iter] + $proc_mem_util[1][$iter] + $proc_mem_util[2][$iter] + $proc_mem_util[3][$iter])/4;
+
+		print F4 "$plot_sim_sec,$allcores_freq[$iter], ,$allcores_intutil[$iter],$allcores_floatutil[$iter],$allcores_memutil[$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
 		
 		#print F6 "$plot_sim_sec,$proc_dynp[0][$iter],$proc_dynp[1][$iter],$proc_dynp[2][$iter],$proc_dynp[3][$iter]\n";
 		$cum_proc_sim_seconds += $proc_sim_seconds[$iter];
-		print F0 "$cum_proc_sim_seconds,$proc_freq[0][$iter], ,$proc_int_util[0][$iter],$proc_float_util[0][$iter],$proc_mem_util[0][$iter], ,$sys_eth_bytes[$iter]\n";
-		print F1 "$cum_proc_sim_seconds,$proc_freq[1][$iter], ,$proc_int_util[1][$iter],$proc_float_util[1][$iter],$proc_mem_util[1][$iter], ,$sys_eth_bytes[$iter]\n";
-		print F2 "$cum_proc_sim_seconds,$proc_freq[2][$iter], ,$proc_int_util[2][$iter],$proc_float_util[2][$iter],$proc_mem_util[2][$iter], ,$sys_eth_bytes[$iter]\n";
-		print F3 "$cum_proc_sim_seconds,$proc_freq[3][$iter], ,$proc_int_util[3][$iter],$proc_float_util[3][$iter],$proc_mem_util[3][$iter], ,$sys_eth_bytes[$iter]\n";
+		print F0 "$cum_proc_sim_seconds,$proc_freq[0][$iter], ,$proc_int_util[0][$iter],$proc_float_util[0][$iter],$proc_mem_util[0][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		print F1 "$cum_proc_sim_seconds,$proc_freq[1][$iter], ,$proc_int_util[1][$iter],$proc_float_util[1][$iter],$proc_mem_util[1][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		print F2 "$cum_proc_sim_seconds,$proc_freq[2][$iter], ,$proc_int_util[2][$iter],$proc_float_util[2][$iter],$proc_mem_util[2][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		print F3 "$cum_proc_sim_seconds,$proc_freq[3][$iter], ,$proc_int_util[3][$iter],$proc_float_util[3][$iter],$proc_mem_util[3][$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		
+		print F4 "$cum_proc_sim_seconds,$allcores_freq[$iter], ,$allcores_intutil[$iter],$allcores_floatutil[$iter],$allcores_memutil[$iter], ,$sys_eth_bytes[$iter],$sys_eth_bw[$iter]\n";
+		
 		#print F6 "$cum_proc_sim_seconds,$proc_dynp[0][$iter],$proc_dynp[1][$iter],$proc_dynp[2][$iter],$proc_dynp[3][$iter]\n";
 		$iter++;
 	}

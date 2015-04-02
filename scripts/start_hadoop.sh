@@ -46,7 +46,6 @@
 # again mount and check your disk image...
 #################################################################################
 
-echo "I am inside create_arm_ckpt_hadoop.sh!"
 # Test if the RUNSCRIPT_VAR environment variable is already set
 echo "Test m5"
 if [ "${RUNSCRIPT_VAR+set}" != set ]
