@@ -509,7 +509,7 @@ while ($STATS_FILE_I < $num_stats_file)
 				$proc_freq[3][$part -1] = int($proc_freq[3][$part -1] * 1000);#in MHz
 				#print "1 tmp_sim_seconds is $tmp_sim_seconds and part is $part\n";
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::IntAlu\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::IntAlu\s+(\d+)/)
 			{
 				print "intalu_insts: cpu$1: $2\n";
 				#initialize to zero
@@ -517,58 +517,58 @@ while ($STATS_FILE_I < $num_stats_file)
 				$proc_int_busy_cycles[$1][$part - 1] += $2 * $IntAluLatencyFac;
 				print "proc_int_busy_cycles cpu$1 = $proc_int_busy_cycles[$1][$part - 1]\n";
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::IntMult\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::IntMult\s+(\d+)/)
 			{
 				print "intmult_insts: cpu$1: $2\n";
 				$proc_int_busy_cycles[$1][$part - 1] += $2 * $IntMultLatencyFac;
 				print "proc_int_busy_cycles = $proc_int_busy_cycles[$1][$part - 1]\n";
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::IntDiv\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::IntDiv\s+(\d+)/)
 			{
 				print "intdiv_insts: cpu$1: $2\n";
 				$proc_int_busy_cycles[$1][$part - 1] += $2 * $IntDivLatencyFac;
 				print "proc_int_busy_cycles = $proc_int_busy_cycles[$1][$part - 1]\n";
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatAdd\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::FloatAdd\s+(\d+)/)
 			{
 				print "floatadd_insts: cpu$1: $2\n";
 				# initialize to zero
 				$proc_float_busy_cycles[$1][$part - 1] = 0;
 				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatCmp\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::FloatCmp\s+(\d+)/)
 			{
 				print "floatcmp_insts: cpu$1: $2\n";
 				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatCvt\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::FloatCvt\s+(\d+)/)
 			{
 				print "floatcvt_insts: cpu$1: $2\n";
 				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatMult\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::FloatMult\s+(\d+)/)
 			{
 				print "floatmult_insts: cpu$1: $2\n";
 				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatDiv\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::FloatDiv\s+(\d+)/)
 			{
 				print "floatdiv_insts: cpu$1: $2\n";
 				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::FloatSqrt\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::FloatSqrt\s+(\d+)/)
 			{
 				print "floatsqrt_insts: cpu$1: $2\n";
 				$proc_float_busy_cycles[$1][$part - 1] += $2 * $FloatLatencyFac;
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::MemRead\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::MemRead\s+(\d+)/)
 			{
 				print "memread_insts: cpu$1: $2\n";
 				# init to zero
 				$proc_mem_busy_cycles[$1][$part - 1] = 0;
 				$proc_mem_busy_cycles[$1][$part - 1] += $2 * $MemLatencyFac;
 			}
-			if ($line =~ /.*system.switch_cpus(\d).iq.FU_type_0::MemWrite\s+(\d+)/)
+			if ($line =~ /.*system.cpu(\d).op_class::MemWrite\s+(\d+)/)
 			{
 				print "memwrite_insts: cpu$1: $2\n";
 				$proc_mem_busy_cycles[$1][$part - 1] += $2 * $MemLatencyFac;
@@ -770,8 +770,7 @@ while ($STATS_FILE_I < $num_stats_file)
 	open F3, ">$out_dir/cum.core3.csv" or die $!;
 	print F3 "CumSimSec,Core3Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW,EthTotBW,SimSec\n";
 	open F4, ">$out_dir/cum.allcores.csv" or die $!;
-	print F4 "CumSimSec,Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW,EthTotBW,SimSec\n";
-	
+	print F3 "CumSimSec,Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW,EthTotBW,SimSec\n";
 	#open F6, ">$out_dir/cum.timedynp.csv" or die $!;
 	#print F6 "cum_proc_sim_seconds,proc_dynp0,proc_dynp1,proc_dynp2,proc_dynp3\n";
 	while($iter < ($MAXPHASES -1))
