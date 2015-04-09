@@ -149,6 +149,7 @@ run_dir= params['run_dir'] + '/'+ params['config']
 
 # Clean up the old files
 os.system("rm -rf %s" % (run_dir))
+os.system("mkdir %s > /dev/null" %(params['run_dir']))
 os.system("mkdir %s > /dev/null" %(run_dir))
 os.system("mkdir %s/switch > /dev/null" %(run_dir))
 os.system("mkdir %s > /dev/null" %(params['cpt_dir']))
@@ -279,8 +280,9 @@ itr = 0
 for machine in machines:
     (m,a) = machine.split(':')
     a_to_m[a] = m
-        
-    if ( a == "tux0" and params['trace_on_tux0'] == '1' ) or ( a=="tux1" and params['trace_on_tux1'] == '1') or ( a=="tux2" and params['trace_on_tux2'] == '1') or (params['trace_on_all'] == '1'):
+   
+    # remove tux4 below     
+    if ( a == "tux0" and params['trace_on_tux0'] == '1' ) or ( a=="tux1" and params['trace_on_tux1'] == '1') or ( a=="tux2" and params['trace_on_tux2'] == '1') or (params['trace_on_all'] == '1') or ( a=="tux4" and params['trace_on_tux4'] == '1'):
         cmd_tux[a] = cmd_debug + cmd + '--checkpoint-dir=' + params['cpt_dir'] + '/' + a + ' ' \
         '--sync-host=' + sync_host_ip + ' ' \
         '--mac=00:90:00:00:00:0' + str(itr) + ' ' \
