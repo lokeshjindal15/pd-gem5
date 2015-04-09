@@ -73,7 +73,7 @@ def config_cache(options, system):
         # same clock as the CPUs, and set the L1-to-L2 bus width to 32
         # bytes (256 bits).
         if options.cpu_type == "arm_detailed":
-            system.l3 = l3_cache_class(clk_domain=system.cpu_clk_domain)
+            system.l3 = l3_cache_class(clk_domain=system.clk_domain_const)
             system.tol3bus = CoherentXBar(clk_domain = system.cpu_clk_domain,
                                       width = 32)
             system.l3.cpu_side = system.tol3bus.master

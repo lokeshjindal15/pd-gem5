@@ -112,9 +112,9 @@ def cpu_names():
 # in the normal object hierarchy, so we have to add it manually.
 try:
     from O3_ARM_v7a import O3_ARM_v7a_3
-    from PileDriver import PileDriver
+    #from PileDriver import PileDriver
     _cpu_classes["arm_detailed"] = O3_ARM_v7a_3
-    _cpu_classes["piledriver"] = PileDriver
+    #_cpu_classes["piledriver"] = PileDriver
 
 except:
     pass

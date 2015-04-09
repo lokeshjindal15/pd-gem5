@@ -210,8 +210,8 @@ class O3_ARM_v7a_ICache(BaseCache):
     size = '32kB'
     assoc = 2
     is_top_level = True
-    prefetch_on_access = True
-    prefetcher = TaggedPrefetcher(degree = 2, latency = 1)
+    #prefetch_on_access = False # turning of prefetcher as it throws segfault
+    #prefetcher = TaggedPrefetcher(degree = 2, latency = 1)
 #    hit_latency = 1
 #    response_latency = 1
 #    mshrs = 2
@@ -230,8 +230,8 @@ class O3_ARM_v7a_DCache(BaseCache):
     assoc = 4
     write_buffers = 16
     is_top_level = True
-    prefetch_on_access = True
-    prefetcher = StridePrefetcher(degree = 2, latency = 1)
+    #prefetch_on_access =False # turning of prefetcher as it throws segfaulte
+    #prefetcher = StridePrefetcher(degree = 2, latency = 1)
 #    hit_latency = 2
 #    response_latency = 2
 #    mshrs = 6
@@ -271,9 +271,9 @@ class O3_ARM_v7aL2(BaseCache):
     size = '256kB'
     assoc = 8
     write_buffers = 8
-    prefetch_on_access = True
+    #prefetch_on_access =False # turning of prefetcher as it throws segfaulte
     # Simple stride prefetcher
-    prefetcher = StridePrefetcher(degree=2, latency = 1)
+    #prefetcher = StridePrefetcher(degree=2, latency = 1)
     # tags = RandomRepl()
 #    hit_latency = 12
 #    response_latency = 12
@@ -298,7 +298,7 @@ class O3_ARM_v7aL3(BaseCache):
     size = '4MB'
     assoc = 16
     write_buffers = 8
-    prefetch_on_access = True
+    #prefetch_on_access =False # turning of prefetcher as it throws segfaulte
     # Simple stride prefetcher
-    prefetcher = StridePrefetcher(degree=2, latency = 1)
+    #prefetcher = StridePrefetcher(degree=2, latency = 1)
 
