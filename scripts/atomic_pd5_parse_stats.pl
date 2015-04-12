@@ -773,7 +773,8 @@ while ($STATS_FILE_I < $num_stats_file)
 	print F3 "CumSimSec,Freq, ,IntUtil,FloatUtil,MemUtil, ,EthBytes,EthBW,EthTotBW,SimSec\n";
 	#open F6, ">$out_dir/cum.timedynp.csv" or die $!;
 	#print F6 "cum_proc_sim_seconds,proc_dynp0,proc_dynp1,proc_dynp2,proc_dynp3\n";
-	while($iter < ($MAXPHASES -1))
+	#while($iter < ($MAXPHASES -1)) # TODO FIXME
+	while($iter < ($MAXPHASES))
 	{	
 		#$totalp = $proc_dynp[$iter] + $proc_leakp[$iter];
 		#$totalp = ($proc_leakp[0][$iter] + $proc_leakp[1][$iter] + $proc_leakp[2][$iter] +$proc_leakp[3][$iter] 
