@@ -293,6 +293,7 @@ def benchCheckpoints_sync(options ,maxreltick ,sync_ticks ,cptdir,testsys):
         exit_event = m5.simulate(sync_ticks)
         exit_cause = exit_event.getCause()
         total_tick_simulated = sync_ticks
+        total_q_simulated = 0
         num_checkpoints = 0
         max_checkpoints = options.max_checkpoints
         s.send(MESSAGE)
@@ -310,6 +311,11 @@ def benchCheckpoints_sync(options ,maxreltick ,sync_ticks ,cptdir,testsys):
         pre_tick = m5.curTick()
         exit_event = m5.simulate(sync_ticks)
         total_tick_simulated +=sync_ticks
+        total_q_simulated = total_q_simulated + 1
+        if options.periodic_dump_stats != 0:
+            if (total_q_simulated % options.periodic_dump_stats) == 0:
+                m5.stats.dump()
+                m5.stats.reset()
         if options.cpt_period and (total_tick_simulated >= options.warmup_period):
             if (total_tick_simulated % options.cpt_period) == 0:
                 m5.checkpoint(joinpath(cptdir, "cpt.%d"))
