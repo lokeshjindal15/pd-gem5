@@ -213,7 +213,8 @@ cmd +=  '--mem-size=' + params['mem_size'] + ' ' \
 	'--tcp-jmp-delay1=' + params['tcp_jmp_delay1'] + ' ' \
 	'--tcp-jmp-size0=' + params['tcp_jmp_size0'] + ' ' \
 	'--tcp-jmp-size1=' + params['tcp_jmp_size1'] + ' ' \
-	'--tap-first-delay=' + params['tap_first_delay'] + ' '
+	'--tap-first-delay=' + params['tap_first_delay'] + ' '\
+	'--periodic-dump-stats=' + params['periodic_dump_stats'] + ' '
 
 
 #cmd_no_sync is just for switch usage, because we don't add --num-cpu option to it
