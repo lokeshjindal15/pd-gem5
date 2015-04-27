@@ -1,0 +1,1 @@
+rtsm_ve-cortex_a9x4.o: arch/arm/boot/dts/rtsm_ve-cortex_a9x4.dts

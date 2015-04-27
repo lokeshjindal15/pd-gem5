@@ -1,0 +1,2 @@
+vexpress-v2p-ca15-tc1-gem5.o: \
+ arch/arm/boot/dts/vexpress-v2p-ca15-tc1-gem5.dts

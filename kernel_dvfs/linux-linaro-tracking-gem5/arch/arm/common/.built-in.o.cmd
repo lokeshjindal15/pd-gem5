@@ -1,0 +1,1 @@
+cmd_arch/arm/common/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o arch/arm/common/built-in.o arch/arm/common/firmware.o arch/arm/common/icst.o arch/arm/common/timer-sp.o arch/arm/common/mcpm_head.o arch/arm/common/mcpm_entry.o arch/arm/common/mcpm_platsmp.o arch/arm/common/vlock.o 

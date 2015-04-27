@@ -1,0 +1,1 @@
+arch/arm/boot/dts/vexpress-v2p-ca15-tc1-gem5_dvfs_4cpus.dtb: arch/arm/boot/dts/.vexpress-v2p-ca15-tc1-gem5_dvfs_4cpus.dtb.dts.tmp arch/arm/boot/dts/vexpress-v2m-rs1-gem5.dtsi

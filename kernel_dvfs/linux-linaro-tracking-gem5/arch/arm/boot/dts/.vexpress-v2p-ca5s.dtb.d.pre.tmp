@@ -1,0 +1,1 @@
+vexpress-v2p-ca5s.o: arch/arm/boot/dts/vexpress-v2p-ca5s.dts

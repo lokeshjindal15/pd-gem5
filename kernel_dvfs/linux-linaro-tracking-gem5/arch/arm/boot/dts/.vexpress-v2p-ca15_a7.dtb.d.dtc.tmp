@@ -1,0 +1,1 @@
+arch/arm/boot/dts/vexpress-v2p-ca15_a7.dtb: arch/arm/boot/dts/.vexpress-v2p-ca15_a7.dtb.dts.tmp arch/arm/boot/dts/vexpress-v2m-rs1.dtsi
