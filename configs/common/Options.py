@@ -95,7 +95,7 @@ def addCommonOptions(parser):
     parser.add_option("--tcp-jmp-delay1", type="string", default='0us')
     parser.add_option("--server", type="string", default='True')
     parser.add_option("--tap-first-delay", type="string", default='1ms')
-    parser.add_option("--periodic-dump-stats",type="int",default=0)
+
     # system options
     parser.add_option("--list-cpu-types",
                       action="callback", callback=_listCpuTypes,

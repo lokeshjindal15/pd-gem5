@@ -1,0 +1,9 @@
+kernel/drivers/video/fb.ko
+kernel/drivers/video/cfbfillrect.ko
+kernel/drivers/video/cfbcopyarea.ko
+kernel/drivers/video/cfbimgblt.ko
+kernel/drivers/video/amba-clcd.ko
+kernel/drivers/video/arm-hdlcd.ko
+kernel/drivers/video/console/fbcon.ko
+kernel/drivers/video/console/bitblit.ko
+kernel/drivers/video/console/softcursor.ko

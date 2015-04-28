@@ -16,5 +16,5 @@ ext/ply/ply/*.pyc
 src/mem/slicc/generate/*.pyc
 log
 rundir*
-kernel_dvfs
+*.o
 

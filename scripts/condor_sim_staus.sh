@@ -30,7 +30,7 @@
 # change the strings used to grep graceful completion of benchmakrs
 # number of condor_jobs per benchmark 5 in our case
 
-CONDOR_JOBS_PER_BMARK=5
+CONDOR_JOBS_PER_BMARK=6
 echo "condor_jobs per benchmark = $CONDOR_JOBS_PER_BMARK"
 
 directory=$1

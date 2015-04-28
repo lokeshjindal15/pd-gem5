@@ -1,0 +1,1 @@
+arch/arm/boot/dts/vexpress-v2p-ca9.dtb: arch/arm/boot/dts/.vexpress-v2p-ca9.dtb.dts.tmp arch/arm/boot/dts/clcd-panels.dtsi arch/arm/boot/dts/vexpress-v2m.dtsi

@@ -1,0 +1,2 @@
+rtsm_ve-v2p-ca15x4-ca7x4.o: \
+ arch/arm/boot/dts/rtsm_ve-v2p-ca15x4-ca7x4.dts

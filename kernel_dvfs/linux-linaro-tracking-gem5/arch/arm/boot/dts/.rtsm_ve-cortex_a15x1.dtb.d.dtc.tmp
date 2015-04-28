@@ -1,0 +1,1 @@
+arch/arm/boot/dts/rtsm_ve-cortex_a15x1.dtb: arch/arm/boot/dts/.rtsm_ve-cortex_a15x1.dtb.dts.tmp arch/arm/boot/dts/rtsm_ve-motherboard.dtsi arch/arm/boot/dts/clcd-panels.dtsi
