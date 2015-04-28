@@ -216,6 +216,7 @@ EtherLink::Link::txDone(Tick sTick)
             //causality check
             if (scheduleTick < curTick()){
                 DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
+                printf("1. packet arrived late!:|%lu|\n",curTick() - scheduleTick);
                 scheduleTick = curTick();
             }
 
@@ -238,6 +239,7 @@ EtherLink::Link::txDone(Tick sTick)
             //causality check
             if (scheduleTick < curTick()){
                 DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
+                printf("2. packet arrived late!:|%lu|\n",curTick() - scheduleTick);
                 scheduleTick = curTick();
             }
 
@@ -260,6 +262,7 @@ EtherLink::Link::txDone(Tick sTick)
             //causality check
             if (scheduleTick < curTick()){
                 DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
+                printf("3. packet arrived late!:|%lu|\n",curTick() - scheduleTick);
                 scheduleTick = curTick();
             }
 
@@ -280,6 +283,7 @@ EtherLink::Link::txDone(Tick sTick)
         //causality check
         if (scheduleTick < curTick()){
             DPRINTF(EthernetTimingViolation, "packet arrived late!:|%lu|\n",curTick() - scheduleTick);
+            printf("4. packet arrived late!:|%lu|\n",curTick() - scheduleTick);
             scheduleTick = curTick();
         }
 

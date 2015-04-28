@@ -174,6 +174,7 @@ enum IntTypes
     IT_LSC     = 0x00004,
     IT_RXSEQ   = 0x00008,
     IT_RXDMT   = 0x00010,
+    IT_PDGEM5   = 0x00020, // lokeshjindal15
     IT_RXO     = 0x00040,
     IT_RXT     = 0x00080,
     IT_MADC    = 0x00200,
@@ -431,7 +432,8 @@ struct Regs {
         ADD_FIELD32(lsc,2,1)    // link status change
         ADD_FIELD32(rxseq,3,1)  // rcv sequence error
         ADD_FIELD32(rxdmt0,4,1) // rcv descriptor min thresh
-        ADD_FIELD32(rsvd1,5,1)  // reserved
+        //ADD_FIELD32(rsvd1,5,1)  // reserved
+        ADD_FIELD32(pdgem5,5,1)  // reserved // lokeshjindal15
         ADD_FIELD32(rxo,6,1)    // receive overrunn
         ADD_FIELD32(rxt0,7,1)   // receiver timer interrupt
         ADD_FIELD32(mdac,9,1)   // mdi/o access complete
