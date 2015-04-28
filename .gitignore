@@ -17,4 +17,13 @@ src/mem/slicc/generate/*.pyc
 log
 rundir*
 *.o
+*.o.cmd
+*.cmd
+kernel_dvfs/linux-linaro-tracking-gem5/System.map
+kernel_dvfs/linux-linaro-tracking-gem5/arch/arm/kernel/asm-offsets.s
+kernel_dvfs/linux-linaro-tracking-gem5/include/generated/compile.h
+kernel_dvfs/linux-linaro-tracking-gem5/kernel/bounds.s
+kernel_dvfs/linux-linaro-tracking-gem5/scripts/mod/devicetable-offsets.s
+kernel_dvfs/linux-linaro-tracking-gem5/usr/.initramfs_data.cpio.d
+kernel_dvfs/linux-linaro-tracking-gem5/vmlinux
 

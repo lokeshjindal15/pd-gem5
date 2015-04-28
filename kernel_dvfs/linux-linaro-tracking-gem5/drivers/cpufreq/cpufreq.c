@@ -30,6 +30,8 @@
 #include <linux/tick.h>
 #include <trace/events/power.h>
 
+#include "../../drivers/net/ethernet/intel/e1000/e1000.h"
+
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -256,12 +258,16 @@ static void adjust_jiffies(unsigned long val, struct cpufreq_freqs *ci)
 		l_p_j_ref_freq = ci->old;
 		pr_debug("saving %lu as reference value for loops_per_jiffy; "
 			"freq is %u kHz\n", l_p_j_ref, l_p_j_ref_freq);
+		printk(KERN_EMERG "saving %lu as reference value for loops_per_jiffy; "
+			"freq is %u kHz\n", l_p_j_ref, l_p_j_ref_freq);
 	}
 	if ((val == CPUFREQ_POSTCHANGE && ci->old != ci->new) ||
 	    (val == CPUFREQ_RESUMECHANGE || val == CPUFREQ_SUSPENDCHANGE)) {
 		loops_per_jiffy = cpufreq_scale(l_p_j_ref, l_p_j_ref_freq,
 								ci->new);
 		pr_debug("scaling loops_per_jiffy to %lu "
+			"for frequency %u kHz\n", loops_per_jiffy, ci->new);
+		printk(KERN_EMERG "scaling loops_per_jiffy to %lu "
 			"for frequency %u kHz\n", loops_per_jiffy, ci->new);
 	}
 }
@@ -275,13 +281,16 @@ static inline void adjust_jiffies(unsigned long val, struct cpufreq_freqs *ci)
 static void __cpufreq_notify_transition(struct cpufreq_policy *policy,
 		struct cpufreq_freqs *freqs, unsigned int state)
 {
-	BUG_ON(irqs_disabled());
+	// lokeshjindal15 TODO FIXME hack to bypass this check
+	//BUG_ON(irqs_disabled());
 
 	if (cpufreq_disabled())
 		return;
 
 	freqs->flags = cpufreq_driver->flags;
 	pr_debug("notification %u of frequency transition to %u kHz\n",
+		state, freqs->new);
+	printk(KERN_EMERG "notification %u of frequency transition to %u kHz\n",
 		state, freqs->new);
 
 	switch (state) {
@@ -297,6 +306,9 @@ static void __cpufreq_notify_transition(struct cpufreq_policy *policy,
 				pr_debug("Warning: CPU frequency is"
 					" %u, cpufreq assumed %u kHz.\n",
 					freqs->old, policy->cur);
+				printk(KERN_EMERG "Warning: CPU frequency is"
+					" %u, cpufreq assumed %u kHz.\n",
+					freqs->old, policy->cur);
 				freqs->old = policy->cur;
 			}
 		}
@@ -308,6 +320,8 @@ static void __cpufreq_notify_transition(struct cpufreq_policy *policy,
 	case CPUFREQ_POSTCHANGE:
 		adjust_jiffies(CPUFREQ_POSTCHANGE, freqs);
 		pr_debug("FREQ: %lu - CPU: %lu", (unsigned long)freqs->new,
+			(unsigned long)freqs->cpu);
+		printk(KERN_EMERG "FREQ: %lu - CPU: %lu", (unsigned long)freqs->new,
 			(unsigned long)freqs->cpu);
 		trace_cpu_frequency(freqs->new, freqs->cpu);
 		srcu_notifier_call_chain(&cpufreq_transition_notifier_list,
@@ -882,6 +896,8 @@ static void cpufreq_init_policy(struct cpufreq_policy *policy)
 	struct cpufreq_policy new_policy;
 	int ret = 0;
 
+	int return_e1k = 0;
+
 	memcpy(&new_policy, policy, sizeof(*policy));
 
 	/* Use the default policy if its valid. */
@@ -898,6 +914,18 @@ static void cpufreq_init_policy(struct cpufreq_policy *policy)
 		pr_debug("setting policy failed\n");
 		if (cpufreq_driver->exit)
 			cpufreq_driver->exit(policy);
+	}
+
+	printk (KERN_EMERG "##### cpufreq_init_policy: setting policy for CPU: *%d*\n", policy->cpu);
+	
+	// if done with all 4 cpus call init_e1k_cpufreq_policies routine
+	if (policy->cpu == 3)
+	{
+		return_e1k = init_e1k_cpufreq_policies();
+		if (return_e1k)
+		{
+			printk (KERN_EMERG "ERROR! FAIL! init_e1k_cpufreq_policies() returned %d\n", return_e1k);
+		}
 	}
 }
 
@@ -1460,6 +1488,8 @@ static void cpufreq_out_of_sync(unsigned int cpu, unsigned int old_freq,
 
 	pr_debug("Warning: CPU frequency out of sync: cpufreq and timing "
 	       "core thinks of %u, is %u kHz.\n", old_freq, new_freq);
+	printk(KERN_EMERG "Warning: CPU frequency out of sync: cpufreq and timing "
+	       "core thinks of %u, is %u kHz.\n", old_freq, new_freq);
 
 	freqs.old = old_freq;
 	freqs.new = new_freq;
@@ -1763,6 +1793,8 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 
 	pr_debug("target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
 			policy->cpu, target_freq, relation, old_target_freq);
+	printk(KERN_EMERG "target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
+			policy->cpu, target_freq, relation, old_target_freq);
 
 	/*
 	 * This might look like a redundant call as we are checking it again
@@ -1784,6 +1816,7 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 		freq_table = cpufreq_frequency_get_table(policy->cpu);
 		if (unlikely(!freq_table)) {
 			pr_err("%s: Unable to find freq_table\n", __func__);
+			printk(KERN_EMERG "%s: Unable to find freq_table\n", __func__);
 			goto out;
 		}
 
@@ -1791,6 +1824,7 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 				target_freq, relation, &index);
 		if (unlikely(retval)) {
 			pr_err("%s: Unable to find matching freq\n", __func__);
+			printk(KERN_EMERG "%s: Unable to find matching freq\n", __func__);
 			goto out;
 		}
 
@@ -1809,6 +1843,9 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 			pr_debug("%s: cpu: %d, oldfreq: %u, new freq: %u\n",
 					__func__, policy->cpu, freqs.old,
 					freqs.new);
+			printk(KERN_EMERG "%s: cpu: %d, oldfreq: %u, new freq: %u\n",
+					__func__, policy->cpu, freqs.old,
+					freqs.new);
 
 			cpufreq_notify_transition(policy, &freqs,
 					CPUFREQ_PRECHANGE);
@@ -1817,6 +1854,8 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 		retval = cpufreq_driver->target_index(policy, index);
 		if (retval)
 			pr_err("%s: Failed to change cpu frequency: %d\n",
+					__func__, retval);
+			printk(KERN_EMERG "%s: Failed to change cpu frequency: %d\n",
 					__func__, retval);
 
 		if (notify)

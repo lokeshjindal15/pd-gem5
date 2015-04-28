@@ -2081,6 +2081,8 @@ static int e1000_request_msix(struct e1000_adapter *adapter)
 	struct net_device *netdev = adapter->netdev;
 	int err = 0, vector = 0;
 
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_request_msix\n");
+
 	if (strlen(netdev->name) < (IFNAMSIZ - 5))
 		snprintf(adapter->rx_ring->name,
 			 sizeof(adapter->rx_ring->name) - 1,
@@ -2133,6 +2135,8 @@ static int e1000_request_irq(struct e1000_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
 	int err;
+
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_request_irq\n");
 
 	if (adapter->msix_entries) {
 		err = e1000_request_msix(adapter);
@@ -2210,6 +2214,8 @@ static void e1000_irq_disable(struct e1000_adapter *adapter)
 static void e1000_irq_enable(struct e1000_adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
+
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_irq_enable\n");
 
 	if (adapter->msix_entries) {
 		ew32(EIAC_82574, adapter->eiac_mask & E1000_EIAC_MASK_82574);
@@ -2896,6 +2902,8 @@ static void e1000_configure_tx(struct e1000_adapter *adapter)
 	u64 tdba;
 	u32 tdlen, tarc;
 
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_configure_tx\n");
+
 	/* Setup the HW Tx Head and Tail descriptor pointers */
 	tdba = tx_ring->dma;
 	tdlen = tx_ring->count * sizeof(struct e1000_tx_desc);
@@ -3124,6 +3132,8 @@ static void e1000_configure_rx(struct e1000_adapter *adapter)
 	struct e1000_ring *rx_ring = adapter->rx_ring;
 	u64 rdba;
 	u32 rdlen, rctl, rxcsum, ctrl_ext;
+
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_configure_rx\n");
 
 	if (adapter->rx_ps_pages) {
 		/* this is a 32 byte descriptor */
@@ -3653,6 +3663,8 @@ static void e1000_configure(struct e1000_adapter *adapter)
 {
 	struct e1000_ring *rx_ring = adapter->rx_ring;
 
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_configure\n");
+
 	e1000e_set_rx_mode(adapter->netdev);
 
 	e1000_restore_vlan(adapter);
@@ -3715,6 +3727,8 @@ void e1000e_reset(struct e1000_adapter *adapter)
 	u32 tx_space, min_tx_space, min_rx_space;
 	u32 pba = adapter->pba;
 	u16 hwm;
+
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000e_reset\n");
 
 	/* reset Packet Buffer Allocation to default */
 	ew32(PBA, pba);
@@ -4082,6 +4096,8 @@ static cycle_t e1000e_cyclecounter_read(const struct cyclecounter *cc)
 static int e1000_sw_init(struct e1000_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
+
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_sw_init\n");
 
 	adapter->rx_buffer_len = ETH_FRAME_LEN + VLAN_HLEN + ETH_FCS_LEN;
 	adapter->rx_ps_bsize0 = 128;
@@ -6549,6 +6565,8 @@ static int e1000_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	u16 eeprom_data = 0;
 	u16 eeprom_apme_mask = E1000_EEPROM_APME;
 
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_probe\n");
+
 	if (ei->flags2 & FLAG2_DISABLE_ASPM_L0S)
 		aspm_disable_flag = PCIE_LINK_STATE_L0S;
 	if (ei->flags2 & FLAG2_DISABLE_ASPM_L1)
@@ -7051,8 +7069,12 @@ static struct pci_driver e1000_driver = {
  * loaded. All it does is register with the PCI subsystem.
  **/
 static int __init e1000_init_module(void)
+
 {
 	int ret;
+
+	printk (KERN_EMERG "##### LOKESH netdev.cc: e1000_init_module\n");	
+
 	pr_info("Intel(R) PRO/1000 Network Driver - %s\n",
 		e1000e_driver_version);
 	pr_info("Copyright(c) 1999 - 2013 Intel Corporation.\n");

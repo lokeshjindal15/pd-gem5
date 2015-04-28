@@ -509,4 +509,11 @@ static inline int cpufreq_generic_exit(struct cpufreq_policy *policy)
 	return 0;
 }
 
+
+#define CACHELINE_SIZE                          64 // lokeshjindal15
+#define PDGEM5_FLAG_SIZE                        4*CACHELINE_SIZE
+extern int pdgem5_ondemand_flag[PDGEM5_FLAG_SIZE+1];
+extern void pdgem5_dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq);
+
+
 #endif /* _LINUX_CPUFREQ_H */
