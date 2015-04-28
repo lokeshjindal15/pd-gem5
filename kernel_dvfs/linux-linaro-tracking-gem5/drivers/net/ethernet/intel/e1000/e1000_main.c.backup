@@ -33,7 +33,7 @@
 #include <linux/bitops.h>
 #include <linux/if_vlan.h>
 
-struct cpufreq_policy * e1k_cpufreq_policies[4]; //cpufreq policy pointer for 4-core config
+#include <linux/cpufreq.h>
 
 char e1000_driver_name[] = "e1000";
 static char e1000_driver_string[] = "Intel(R) PRO/1000 Network Driver";
@@ -246,7 +246,6 @@ struct net_device *e1000_get_hw_dev(struct e1000_hw *hw)
 static int __init e1000_init_module(void)
 {
 	int ret;
-	
 	pr_info("%s - version %s\n", e1000_driver_string, e1000_driver_version);
 
 	pr_info("%s\n", e1000_copyright);
@@ -260,28 +259,10 @@ static int __init e1000_init_module(void)
 		else
 			pr_info("copybreak enabled for "
 				   "packets <= %u bytes\n", copybreak);
-	}	
-
+	}
 	return ret;
 }
 
-int init_e1k_cpufreq_policies()
-{
-	int cpufreq_i = 0;
-	printk (KERN_EMERG "##### Initializing  per cpu cpufreq policies\n");
-	for (cpufreq_i = 0; cpufreq_i < 4; cpufreq_i++)
-	{
-		e1k_cpufreq_policies[cpufreq_i] = cpufreq_cpu_get(cpufreq_i);
-		printk (KERN_EMERG "##### e1k_cpufreq_policies[%d] is *%p*\n", cpufreq_i, e1k_cpufreq_policies[cpufreq_i]);
-		if (!e1k_cpufreq_policies[cpufreq_i])
-		{
-			printk (KERN_EMERG "##### ERROR! FAIL! NULL SEEN e1k_cpufreq_policies[%d] is *%p*\n", cpufreq_i, e1k_cpufreq_policies[cpufreq_i]);
-			return 1;
-		}
-	}
-
-	return 0 ;
-}
 module_init(e1000_init_module);
 
 /**
@@ -427,7 +408,7 @@ static void e1000_configure(struct e1000_adapter *adapter)
 	 * next_to_use != next_to_clean
 	 */
 
-	printk (KERN_EMERG "##### e1000_configure : num_rx_queues = %d\n", adapter->num_rx_queues);
+	printk (KERN_EMERG "##### e1000_configure : num_rx_queues = %d\n", num_rx_queues);
 
 	for (i = 0; i < adapter->num_rx_queues; i++) {
 		struct e1000_rx_ring *ring = &adapter->rx_ring[i];
@@ -1796,7 +1777,7 @@ int e1000_setup_all_rx_resources(struct e1000_adapter *adapter)
 {
 	int i, err = 0;
 
-	printk (KERN_EMERG "##### e1000_setup_all_rx_resources : num_rx_queues = %d\n", adapter->num_rx_queues);
+	printk (KERN_EMERG "##### e1000_setup_all_rx_resources : num_rx_queues = %d\n", num_rx_queues);
 
 	for (i = 0; i < adapter->num_rx_queues; i++) {
 		err = e1000_setup_rx_resources(adapter, &adapter->rx_ring[i]);
@@ -3777,13 +3758,13 @@ static irqreturn_t e1000_intr(int irq, void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	u32 icr = er32(ICR);
 	
-	// #define er32(reg)                                                       
-        // (readl(hw->hw_addr + ((hw->mac_type >= e1000_82543)             
+	// #define er32(reg)                                                       \
+        // (readl(hw->hw_addr + ((hw->mac_type >= e1000_82543)             \
         //                       ? E1000_##reg : E1000_82542_##reg)))
 
-	// printk (KERN_EMERG "##### e1000_main.c: e1000_intr reading icr register 
-	// 			base = 0x%08x and regaddr = 0x%08x\n", 
-	// 			hw->hw_addr, ((hw->mac_type >= e1000_82543) ? E1000_ICR : E1000_82542_ICR));
+	printk (KERN_EMERG "##### e1000_main.c: e1000_intr reading icr register 
+				base = 0x%08x and regaddr = 0x%08x", 
+				hw->hw_addr, ((hw->mac_type >= e1000_82543) ? E1000_ICR : E1000_82542_ICR));
 
 	printk (KERN_EMERG "##### LOKESH e1000_main.cc: e1000_intr ICR value read is icr = 0x%08x\n", icr);
 
