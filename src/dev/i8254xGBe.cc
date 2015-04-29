@@ -47,6 +47,7 @@
 #include "base/trace.hh"
 #include "debug/Drain.hh"
 #include "debug/EthernetAll.hh"
+#include "debug/EthernetTiming.hh"
 #include "dev/i8254xGBe.hh"
 #include "mem/packet.hh"
 #include "mem/packet_access.hh"
@@ -61,9 +62,12 @@ IGbE::IGbE(const Params *p)
     : EtherDevice(p), etherInt(NULL),  drainManager(NULL),
       rxFifo(p->rx_fifo_size), txFifo(p->tx_fifo_size), rxTick(false),
       txTick(false), txFifoTick(false), rxDmaPacket(false), pktOffset(0),
+      arrivalRate(0), rateTh(p->nic_rate_th_freq),
+      rateTimerInterval(p->nic_rate_cal_interval), rxBitCounter(0),
+      first_arrival(true), rateCalcEvent(this),
       fetchDelay(p->fetch_delay), wbDelay(p->wb_delay), 
       fetchCompDelay(p->fetch_comp_delay), wbCompDelay(p->wb_comp_delay), 
-      rxWriteDelay(p->rx_write_delay), txReadDelay(p->tx_read_delay),  
+      rxWriteDelay(p->rx_write_delay), txReadDelay(p->tx_read_delay),
       rdtrEvent(this), radvEvent(this),
       tadvEvent(this), tidvEvent(this), tickEvent(this), interEvent(this),
       rxDescCache(this, name()+".RxDesc", p->rx_desc_cache_size),
@@ -83,7 +87,7 @@ IGbE::IGbE(const Params *p)
     regs.sts.lu(1); // link up
     regs.eecd.fwe(1);
     regs.eecd.ee_type(1);
-    // regs.imr = 0;
+    //regs.imr = 0;
     regs.imr = IT_PDGEM5; // lokeshjindal15
     regs.iam = 0;
     regs.rxdctl.gran(1);
@@ -701,14 +705,11 @@ IGbE::postInterrupt(IntTypes t, bool now)
 {
     assert(t);
 
-    // std::cout << "***** igbe->postInterrupt t is " << std::hex << t << std::endl;
     // Interrupt is already pending
     if (t & regs.icr() && !now)
         return;
 
-    // std::cout << "***** igbe->postInterrupt icr before anding with t is " << std::hex << regs.icr() << std::endl;
     regs.icr = regs.icr() | t;
-    // std::cout << "***** igbe->postInterrupt icr after anding with t is " << std::hex << regs.icr() << std::endl;
 
     Tick itr_interval = SimClock::Int::ns * 256 * regs.itr.interval();
     DPRINTF(EthernetIntr,
@@ -744,10 +745,6 @@ IGbE::cpuPostInt()
 {
 
     postedInterrupts++;
-    
-    // std::cout << "***** IGbE::cpuPostInt : regs.icr is " << std::hex << 
-                regs.icr() << " and regs.imr is " << std::hex << regs.imr 
-		 << " *****" << std::endl; 
 
     if (!(regs.icr() & regs.imr)) {
         DPRINTF(Ethernet, "Interrupt Masked. Not Posting\n");
@@ -1352,14 +1349,6 @@ IGbE::RxDescCache::pktComplete()
     desc = unusedCache.front();
 
     igbe->anBegin("RXS", "Update Desc");
-
-    // static int it_pdgem5 = 1;
-    // if (it_pdgem5 == 0)
-    // {
-    //         it_pdgem5 = 1;
-    //         std::cout << "***** LOKESH asserting interrupt PDGEM5 *****" << std::endl;
-    //         igbe->postInterrupt(IT_PDGEM5); // lokeshjindal15
-    // }
 
     uint16_t crcfixup = igbe->regs.rctl.secrc() ? 0 : 4 ;
     DPRINTF(EthernetDesc, "pktPtr->length: %d bytesCopied: %d "
@@ -2243,19 +2232,16 @@ IGbE::ethRxPkt(EthPacketPtr pkt)
     rxPackets++;
 
     DPRINTF(Ethernet, "RxFIFO: Receiving pcakte from wire\n");
-
-    static uint64_t it_pdgem5 = 1;
-    if ((it_pdgem5 % 100 ) == 0 )
-    {
-	    it_pdgem5++ ;
-            // TODO FIXME you might want to uncomment below to enable PDGEM5 interrupt
-	    // std::cout << "***** LOKESH asserting interrupt PDGEM5 *****" << std::endl;
-            // postInterrupt(IT_PDGEM5); // lokeshjindal15
+    if (first_arrival){
+        first_arrival = false;
+        schedule(rateCalcEvent, curTick() + rateTimerInterval);
     }
-    else
+    rxBitCounter += pkt->length * 8;
+    DPRINTF(EthernetTiming, "FREQ: arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
+    if ( arrivalRate > rateTh )
     {
-	// std::cout << "***** LOKESH it_pdgem5 = " << std::dec << it_pdgem5 << " incrementing by 1 ..." << std::endl;
-	it_pdgem5++ ;
+        DPRINTF(EthernetTiming, "FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
+        postInterrupt(IT_PDGEM5); // lokeshjindal15
     }
 
     anBegin("RXQ", "Wire Recv");
@@ -2307,19 +2293,6 @@ IGbE::rxStateMachine()
         DPRINTF(EthernetSM, "RXS: RX disabled, stopping ticking\n");
         return;
     }
-    
-    // static int it_pdgem5 = 1;
-    // if ((it_pdgem5 % 10 ) == 0 )
-    // {
-    //         std::cout << "***** LOKESH asserting interrupt PDGEM5 *****" << std::endl;
-    //         postInterrupt(IT_PDGEM5); // lokeshjindal15
-    // }
-    // else
-    // {
-    //     std::cout << "***** LOKESH it_pdgem5 = " << it_pdgem5 << " incrementing by 1 ..." << std::endl;
-    //     it_pdgem5++ ;
-    // }
-
 
     // If the packet is done check for interrupts/descriptors/etc
     if (rxDescCache.packetDone()) {

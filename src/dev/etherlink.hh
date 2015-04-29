@@ -43,6 +43,8 @@
 #include "sim/eventq.hh"
 #include "sim/sim_object.hh"
 
+#define TickDigits 12
+
 class EtherDump;
 class Checkpoint;
 /*
@@ -53,6 +55,8 @@ class EtherLink : public EtherObject
   protected:
     class Interface;
 
+    friend class QueueSizeDecEvent;
+    friend class OrderingEvent;
     friend class LinkDelayEvent;
 
   public:
@@ -90,17 +94,34 @@ class EtherLink : public EtherObject
         int DelayJmpPoint0;
         int DelayJmpPoint1;
         bool noDelay;
+        bool nsConnector;
+        int queueSize;
+        /*
+         ct = current tick
+         ts = time stamp
+         td = transport delay
+         pd = propagation delay
+         rt = release tick
+         dt = delivery tick
+         qs = queue size
+        */
+        Tick ct ,ts, td, pd, qd, rt, dt;
+        int qs;
+
 
       protected:
         /*
          * Transfer is complete
          */
         EthPacketPtr packet;
+        void txDone(EthPacketPtr packet,Tick ts);
         void txDone();
-        void txDone(Tick sTick); //for packets which we get from tap device
         typedef EventWrapper<Link, &Link::txDone> DoneEvent;
         friend void DoneEvent::process();
         DoneEvent doneEvent;
+
+        friend class QueueSizeDecEvent;
+        friend class OrderingEvent;
 
         friend class LinkDelayEvent;
         void txComplete(EthPacketPtr packet);
@@ -110,7 +131,7 @@ class EtherLink : public EtherObject
              Tick delay, Tick delay_var, EtherDump *dump,
              double rateTCP, double rateUDP, double rateNoIP,
              double rateRetryTCP, double rateRetryUDP, double rateRetryNoIP, double rateProcessTCP,
-             Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1, bool no_delay);
+             Tick DelayJmp0, Tick DelayJmp1, int SizeJmp0, int SizeJmp1, bool no_delay, bool ns_connector, int queue_size);
         ~Link() {}
 
         const std::string name() const { return objName; }

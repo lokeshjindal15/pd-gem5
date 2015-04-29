@@ -56,6 +56,9 @@ class EtherLink(EtherObject):
     tcp_jmp_size0 = Param.Int(131,"latency jump point 0")
     tcp_jmp_size1 = Param.Int(323,"latency jump point 1")
     no_delay = Param.Bool(False,"If true, then we don't add/remove time stamp to out-going/in-going pkts")
+    ns_connector = Param.Bool(False,"If true, it's a etherlink which connects two NS together")
+    queue_size = Param.Int(100,"link queue size")
+
 
 class EtherBus(EtherObject):
     type = 'EtherBus'
@@ -136,6 +139,8 @@ class IGbE(EtherDevice):
     rx_write_delay = Param.Latency('0ns', "delay after rx dma read")
     phy_pid = Param.UInt16("Phy PID that corresponds to device ID")
     phy_epid = Param.UInt16("Phy EPID that corresponds to device ID")
+    nic_rate_th_freq = Param.UInt64(50000000,"threshold for nic arrival rate to boost freq")
+    nic_rate_cal_interval = Param.Latency('200us', "Interval for calculating nic arrival rate")
 
 class IGbE_e1000(IGbE):
     # Older Intel 8254x based gigabit ethernet adapter
