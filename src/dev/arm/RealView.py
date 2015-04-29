@@ -489,9 +489,10 @@ class VExpress_EMM(RealView):
     energy_ctrl    = EnergyCtrl(pio_addr=0x1c080000)
 
     # Attach any PCI devices that are supported
-    def attachPciDevices(self, mac):
+    def attachPciDevices(self, mac, nic_eth, interval):
         self.ethernet = IGbE_e1000(pci_bus=0, pci_dev=0, pci_func=0,
-                                   InterruptLine=1, InterruptPin=1, hardware_address = mac)
+                                   InterruptLine=1, InterruptPin=1, hardware_address = mac,
+                                nic_rate_th_freq = nic_eth, nic_rate_cal_interval = interval)
         self.ide = IdeController(disks = [], pci_bus=0, pci_dev=1, pci_func=0,
                                  InterruptLine=2, InterruptPin=2)
 

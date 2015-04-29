@@ -174,7 +174,7 @@ enum IntTypes
     IT_LSC     = 0x00004,
     IT_RXSEQ   = 0x00008,
     IT_RXDMT   = 0x00010,
-    IT_PDGEM5   = 0x00020, // lokeshjindal15
+    IT_PDGEM5  = 0x00020, // lokeshjindal15
     IT_RXO     = 0x00040,
     IT_RXT     = 0x00080,
     IT_MADC    = 0x00200,

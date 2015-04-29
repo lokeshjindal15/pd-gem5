@@ -42,6 +42,7 @@
 #include "base/inet.hh"
 #include "debug/EthernetDesc.hh"
 #include "debug/EthernetIntr.hh"
+#include "debug/EthernetTiming.hh"
 #include "dev/etherdevice.hh"
 #include "dev/etherint.hh"
 #include "dev/etherpkt.hh"
@@ -86,7 +87,19 @@ class IGbE : public EtherDevice
 
     // Number of bytes copied from current RX packet
     unsigned pktOffset;
+    uint64_t arrivalRate;       //m.alian
+    uint64_t rateTh;            //m.alian threshold of changing freq arrival rates more that this
+    Tick rateTimerInterval;     //m.alian interval for rate calculation
+    uint64_t rxBitCounter;      //m.alian conter for bytes
+    bool first_arrival;
+    void calcRate(){    //m.alian
+       DPRINTF(EthernetTiming,"arivalRate=%lu,rxBitCounter=%lu,rateTimerInterval=%lu\n",arrivalRate,rxBitCounter,rateTimerInterval);
 
+        arrivalRate = rxBitCounter*1000000/rateTimerInterval;
+        rxBitCounter = 0;
+        schedule(rateCalcEvent, curTick() + rateTimerInterval);
+    }
+    EventWrapper<IGbE, &IGbE::calcRate> rateCalcEvent; //m.alian
     // Delays in managaging descriptors
     Tick fetchDelay, wbDelay;
     Tick fetchCompDelay, wbCompDelay;

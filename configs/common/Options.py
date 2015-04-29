@@ -95,6 +95,8 @@ def addCommonOptions(parser):
     parser.add_option("--tcp-jmp-delay1", type="string", default='0us')
     parser.add_option("--server", type="string", default='True')
     parser.add_option("--tap-first-delay", type="string", default='1ms')
+    parser.add_option("--nic-rate-th-freq",type="long",default=1000)  # for rate calc
+    parser.add_option("--nic-rate-cal-interval", type="string", default='100us') #for rate calc
 
     # system options
     parser.add_option("--list-cpu-types",
