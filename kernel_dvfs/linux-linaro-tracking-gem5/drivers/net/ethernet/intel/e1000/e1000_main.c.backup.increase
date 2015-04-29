@@ -35,8 +35,6 @@
 
 struct cpufreq_policy * e1k_cpufreq_policies[4]; //cpufreq policy pointer for 4-core config
 
-int pdgem5_freq_alternate[4] = {0, 0, 0, 0};
-
 char e1000_driver_name[] = "e1000";
 static char e1000_driver_string[] = "Intel(R) PRO/1000 Network Driver";
 #define DRV_VERSION "7.3.21-k8-NAPI"
@@ -3805,61 +3803,26 @@ static irqreturn_t e1000_intr(int irq, void *data)
 		if (!pdgem5_ondemand_flag[0*CACHELINE_SIZE])
 		{
 			pdgem5_ondemand_flag[0*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[0] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
-				pdgem5_freq_alternate[0] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 0 and setting the flag to 0\n");
-				pdgem5_freq_alternate[0] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min, CPUFREQ_RELATION_L);
-			} 
+			printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
+			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
 		}
 		if (!pdgem5_ondemand_flag[1*CACHELINE_SIZE])
 		{
 			pdgem5_ondemand_flag[1*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[1] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
-				pdgem5_freq_alternate[1] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 1 and setting the flag to 0\n");
-				pdgem5_freq_alternate[1] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->min, CPUFREQ_RELATION_L);
-			} 
-
+			printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
+			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
 		}
 		if (!pdgem5_ondemand_flag[2*CACHELINE_SIZE])
 		{
 			pdgem5_ondemand_flag[2*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[2] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
-				pdgem5_freq_alternate[2] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 2 and setting the flag to 0\n");
-				pdgem5_freq_alternate[2] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min, CPUFREQ_RELATION_L);
-			} 
-
+			printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
+			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
 		}
 		if (!pdgem5_ondemand_flag[3*CACHELINE_SIZE])
 		{
 			pdgem5_ondemand_flag[3*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[3] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");
-				pdgem5_freq_alternate[3] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 3 and setting the flag to 0\n");
-				pdgem5_freq_alternate[3] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min, CPUFREQ_RELATION_L);
-			} 
-
+			printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");
+			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
 		}
 	
 		// should not look at at interrupt E1000_ICR_PDGEM5 beyond this

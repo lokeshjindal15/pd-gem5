@@ -33,9 +33,7 @@
 #include <linux/bitops.h>
 #include <linux/if_vlan.h>
 
-struct cpufreq_policy * e1k_cpufreq_policies[4]; //cpufreq policy pointer for 4-core config
-
-int pdgem5_freq_alternate[4] = {0, 0, 0, 0};
+#include <linux/cpufreq.h>
 
 char e1000_driver_name[] = "e1000";
 static char e1000_driver_string[] = "Intel(R) PRO/1000 Network Driver";
@@ -248,7 +246,6 @@ struct net_device *e1000_get_hw_dev(struct e1000_hw *hw)
 static int __init e1000_init_module(void)
 {
 	int ret;
-	
 	pr_info("%s - version %s\n", e1000_driver_string, e1000_driver_version);
 
 	pr_info("%s\n", e1000_copyright);
@@ -262,28 +259,10 @@ static int __init e1000_init_module(void)
 		else
 			pr_info("copybreak enabled for "
 				   "packets <= %u bytes\n", copybreak);
-	}	
-
+	}
 	return ret;
 }
 
-int init_e1k_cpufreq_policies()
-{
-	int cpufreq_i = 0;
-	printk (KERN_EMERG "##### Initializing  per cpu cpufreq policies\n");
-	for (cpufreq_i = 0; cpufreq_i < 4; cpufreq_i++)
-	{
-		e1k_cpufreq_policies[cpufreq_i] = cpufreq_cpu_get(cpufreq_i);
-		printk (KERN_EMERG "##### e1k_cpufreq_policies[%d] is *%p*\n", cpufreq_i, e1k_cpufreq_policies[cpufreq_i]);
-		if (!e1k_cpufreq_policies[cpufreq_i])
-		{
-			printk (KERN_EMERG "##### ERROR! FAIL! NULL SEEN e1k_cpufreq_policies[%d] is *%p*\n", cpufreq_i, e1k_cpufreq_policies[cpufreq_i]);
-			return 1;
-		}
-	}
-
-	return 0 ;
-}
 module_init(e1000_init_module);
 
 /**
@@ -320,7 +299,6 @@ static int e1000_request_irq(struct e1000_adapter *adapter)
 static void e1000_free_irq(struct e1000_adapter *adapter)
 {
 	struct net_device *netdev = adapter->netdev;
-	printk (KERN_EMERG "##### e1000_free_irq\n");
 
 	free_irq(adapter->pdev->irq, netdev);
 }
@@ -333,7 +311,6 @@ static void e1000_irq_disable(struct e1000_adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 
-	printk (KERN_EMERG "##### e1000_irq_disable\n");
 	ew32(IMC, ~0);
 	E1000_WRITE_FLUSH();
 	synchronize_irq(adapter->pdev->irq);
@@ -431,7 +408,7 @@ static void e1000_configure(struct e1000_adapter *adapter)
 	 * next_to_use != next_to_clean
 	 */
 
-	printk (KERN_EMERG "##### e1000_configure : num_rx_queues = %d\n", adapter->num_rx_queues);
+	printk (KERN_EMERG "##### e1000_configure : num_rx_queues = %d\n", num_rx_queues);
 
 	for (i = 0; i < adapter->num_rx_queues; i++) {
 		struct e1000_rx_ring *ring = &adapter->rx_ring[i];
@@ -1800,7 +1777,7 @@ int e1000_setup_all_rx_resources(struct e1000_adapter *adapter)
 {
 	int i, err = 0;
 
-	printk (KERN_EMERG "##### e1000_setup_all_rx_resources : num_rx_queues = %d\n", adapter->num_rx_queues);
+	printk (KERN_EMERG "##### e1000_setup_all_rx_resources : num_rx_queues = %d\n", num_rx_queues);
 
 	for (i = 0; i < adapter->num_rx_queues; i++) {
 		err = e1000_setup_rx_resources(adapter, &adapter->rx_ring[i]);
@@ -3781,89 +3758,18 @@ static irqreturn_t e1000_intr(int irq, void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	u32 icr = er32(ICR);
 	
-	// #define er32(reg)                                                       
-        // (readl(hw->hw_addr + ((hw->mac_type >= e1000_82543)             
+	// #define er32(reg)                                                       \
+        // (readl(hw->hw_addr + ((hw->mac_type >= e1000_82543)             \
         //                       ? E1000_##reg : E1000_82542_##reg)))
 
-	// printk (KERN_EMERG "##### e1000_main.c: e1000_intr reading icr register 
-	// 			base = 0x%08x and regaddr = 0x%08x\n", 
-	// 			hw->hw_addr, ((hw->mac_type >= e1000_82543) ? E1000_ICR : E1000_82542_ICR));
+	printk (KERN_EMERG "##### e1000_main.c: e1000_intr reading icr register 
+				base = 0x%08x and regaddr = 0x%08x", 
+				hw->hw_addr, ((hw->mac_type >= e1000_82543) ? E1000_ICR : E1000_82542_ICR));
 
-	printk (KERN_EMERG "##### LOKESH e1000_main.cc: e1000_intr ICR value read is icr = 0x%08x and \
-					pdgem5_ondemand_flag[%d] = %d pdgem5_ondemand_flag[%d] = %d \
-					pdgem5_ondemand_flag[%d] = %d pdgem5_ondemand_flag[%d] = %d \n", 
-					icr, 0*CACHELINE_SIZE, pdgem5_ondemand_flag[0*CACHELINE_SIZE], 1*CACHELINE_SIZE, pdgem5_ondemand_flag[1*CACHELINE_SIZE], 
-					2*CACHELINE_SIZE, pdgem5_ondemand_flag[2*CACHELINE_SIZE], pdgem5_ondemand_flag[3*CACHELINE_SIZE], 3*CACHELINE_SIZE);
+	printk (KERN_EMERG "##### LOKESH e1000_main.cc: e1000_intr ICR value read is icr = 0x%08x\n", icr);
 
-	// if (unlikely((icr & E1000_ICR_PDGEM5) && (!pdgem5_ondemand_flag))){
-	if (unlikely((icr & E1000_ICR_PDGEM5))){
+	if (icr & E1000_ICR_PDGEM5){
 		printk (KERN_EMERG "##### LOKESH e1000_main.cc: ***** PDGEM5 INTERRUPT DETECTED ***** e1000_intr ICR value read is icr = 0x%08x\n", icr);
-		
-		// the ifs here are for extra protection so that we don't try to jack up core frequencies 
-		//	on back to back PDGEM5 interrupts in quick succession
-		// could be removed if hardware guarantees it won't send interrupts in quick succession (at least > ondemand sampling period)
-		if (!pdgem5_ondemand_flag[0*CACHELINE_SIZE])
-		{
-			pdgem5_ondemand_flag[0*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[0] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
-				pdgem5_freq_alternate[0] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 0 and setting the flag to 0\n");
-				pdgem5_freq_alternate[0] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min, CPUFREQ_RELATION_L);
-			} 
-		}
-		if (!pdgem5_ondemand_flag[1*CACHELINE_SIZE])
-		{
-			pdgem5_ondemand_flag[1*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[1] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
-				pdgem5_freq_alternate[1] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 1 and setting the flag to 0\n");
-				pdgem5_freq_alternate[1] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->min, CPUFREQ_RELATION_L);
-			} 
-
-		}
-		if (!pdgem5_ondemand_flag[2*CACHELINE_SIZE])
-		{
-			pdgem5_ondemand_flag[2*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[2] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
-				pdgem5_freq_alternate[2] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 2 and setting the flag to 0\n");
-				pdgem5_freq_alternate[2] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min, CPUFREQ_RELATION_L);
-			} 
-
-		}
-		if (!pdgem5_ondemand_flag[3*CACHELINE_SIZE])
-		{
-			pdgem5_ondemand_flag[3*CACHELINE_SIZE] = 1;
-			if(pdgem5_freq_alternate[3] == 0)
-			{	
-				printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");
-				pdgem5_freq_alternate[3] = 1; pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
-			}
-			else
-			{	
-				printk(KERN_EMERG "BUMPING DOWN frequency of CORE 3 and setting the flag to 0\n");
-				pdgem5_freq_alternate[3] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min, CPUFREQ_RELATION_L);
-			} 
-
-		}
-	
-		// should not look at at interrupt E1000_ICR_PDGEM5 beyond this
-		icr  = icr & (~(E1000_ICR_PDGEM5));
 	}
 
 	if (unlikely((!icr)))
@@ -3949,7 +3855,6 @@ static bool e1000_clean_tx_irq(struct e1000_adapter *adapter,
 	unsigned int total_tx_bytes=0, total_tx_packets=0;
 	unsigned int bytes_compl = 0, pkts_compl = 0;
 
-	printk (KERN_EMERG "##### e1000_clean_tx_irq\n");
 	i = tx_ring->next_to_clean;
 	eop = tx_ring->buffer_info[i].next_to_watch;
 	eop_desc = E1000_TX_DESC(*tx_ring, eop);
@@ -4139,7 +4044,6 @@ static bool e1000_clean_jumbo_rx_irq(struct e1000_adapter *adapter,
 	bool cleaned = false;
 	unsigned int total_rx_bytes=0, total_rx_packets=0;
 
-	printk (KERN_EMERG "##### e1000_clean_jumbo_rx_irq\n");
 	i = rx_ring->next_to_clean;
 	rx_desc = E1000_RX_DESC(*rx_ring, i);
 	buffer_info = &rx_ring->buffer_info[i];
@@ -4353,7 +4257,6 @@ static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 	bool cleaned = false;
 	unsigned int total_rx_bytes=0, total_rx_packets=0;
 
-	printk (KERN_EMERG "##### e1000_clean_rx_irq\n");
 	i = rx_ring->next_to_clean;
 	rx_desc = E1000_RX_DESC(*rx_ring, i);
 	buffer_info = &rx_ring->buffer_info[i];

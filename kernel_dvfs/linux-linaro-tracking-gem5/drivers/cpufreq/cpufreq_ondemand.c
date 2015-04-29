@@ -31,6 +31,8 @@
 
 static DEFINE_PER_CPU(struct od_cpu_dbs_info_s, od_cpu_dbs_info);
 
+int pdgem5_ondemand_flag[PDGEM5_FLAG_SIZE + 1] = {[0 ... PDGEM5_FLAG_SIZE] = 0}; 
+
 static struct od_ops od_ops;
 
 #ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND
@@ -134,9 +136,25 @@ static void ondemand_powersave_bias_init(void)
 	}
 }
 
+void pdgem5_dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)
+{
+	printk (KERN_EMERG "\n*****	PDGEM5 dbs_freq_increase to freq = %u", freq);
+	struct dbs_data *dbs_data = policy->governor_data;
+	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
+
+	if (od_tuners->powersave_bias)
+		freq = od_ops.powersave_bias_target(policy, freq,
+				CPUFREQ_RELATION_H);
+	else if (policy->cur == policy->max)
+		return;
+
+	__cpufreq_driver_target(policy, freq, od_tuners->powersave_bias ?
+			CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
+}
+
 static void dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)
 {
-	printk ("\n*****	dbs_freq_increase to freq = %u", freq);
+	printk (KERN_EMERG "\n*****	dbs_freq_increase to freq = %u", freq);
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
 
@@ -162,12 +180,20 @@ static void od_check_cpu(int cpu, unsigned int load)
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
 
+    if (pdgem5_ondemand_flag[cpu*CACHELINE_SIZE] == 1) // skip ondemand decision cycle this time
+    {
+	printk (KERN_EMERG "##### ONDEMAND od_check_cpu skipping changing frequency for CPU *%d* this time since pdgem5_ondemand_flag[%d] is *%d* and making it zero\n", cpu, cpu*CACHELINE_SIZE, pdgem5_ondemand_flag[cpu*CACHELINE_SIZE]);
+	pdgem5_ondemand_flag[cpu*CACHELINE_SIZE] = 0 ;
+	return;
+    }
+    else // let ondemand do its normal thing
+    {
 	dbs_info->freq_lo = 0;
 
 	/* Check for frequency increase */
-	printk ("\n*****CPU%d: Comparing load = %d and od_tuners->up_threshold = %d", cpu, load, od_tuners->up_threshold);
+	printk (KERN_EMERG "\n*****CPU%d: Comparing load = %d and od_tuners->up_threshold = %d", cpu, load, od_tuners->up_threshold);
 	if (load > od_tuners->up_threshold) {
-		printk ("\n*****	CPU%d: TRUE policy->cur = %d and policy->max = %d", cpu, policy->cur, policy->max);
+		printk (KERN_EMERG "\n*****	CPU%d: TRUE policy->cur = %d and policy->max = %d", cpu, policy->cur, policy->max);
 		/* If switching to max speed, apply sampling_down_factor */
 		if (policy->cur < policy->max){
 			//printk ("\n*****LOKESH Comparing load = %d and od_tuners->up_threshold = %d", load, od_tuners->up_threshold);
@@ -182,7 +208,7 @@ static void od_check_cpu(int cpu, unsigned int load)
 		unsigned int freq_next;
 		freq_next = load * policy->cpuinfo.max_freq / 100;
 
-		printk ("\n*****	CPU%d: FALSE policy->cpuinfo.max_freq = %d, freq_next = %d", cpu, policy->cpuinfo.max_freq, freq_next);
+		printk (KERN_EMERG "\n*****	CPU%d: FALSE policy->cpuinfo.max_freq = %d, freq_next = %d", cpu, policy->cpuinfo.max_freq, freq_next);
 		/* No longer fully busy, reset rate_mult */
 		dbs_info->rate_mult = 1;
 
@@ -197,6 +223,7 @@ static void od_check_cpu(int cpu, unsigned int load)
 		//printk ("\n*****LOKESH Calling __cpufreq_driver_target with freq_next = %d", freq_next);
 		__cpufreq_driver_target(policy, freq_next, CPUFREQ_RELATION_L);
 	}
+    } // end of letting ondemand do its own thing
 }
 
 static void od_dbs_timer(struct work_struct *work)

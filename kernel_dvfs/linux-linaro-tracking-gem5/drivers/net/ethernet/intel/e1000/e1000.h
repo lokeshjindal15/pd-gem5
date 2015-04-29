@@ -69,6 +69,13 @@
 #include <linux/ethtool.h>
 #include <linux/if_vlan.h>
 
+
+
+#include <linux/cpufreq.h> // cpufreq
+
+
+
+
 #define BAR_0		0
 #define BAR_1		1
 #define BAR_5		5
@@ -363,5 +370,9 @@ void e1000_power_up_phy(struct e1000_adapter *);
 void e1000_set_ethtool_ops(struct net_device *netdev);
 void e1000_check_options(struct e1000_adapter *adapter);
 char *e1000_get_hw_dev_name(struct e1000_hw *hw);
+
+
+int init_e1k_cpufreq_policies(void); // cpufreq
+// struct cpufreq_policy * e1k_cpufreq_policies[4]; //cpufreq policy pointer for 4-core config
 
 #endif /* _E1000_H_ */

@@ -1,1 +1,0 @@
-cmd_drivers/gator/gator.ko := arm-linux-gnueabihf-ld -EL -r  -T /users/alian/Simulators/gem5/kernel_dvfs/linux-linaro-tracking-gem5/scripts/module-common.lds --build-id  -o drivers/gator/gator.ko drivers/gator/gator.o drivers/gator/gator.mod.o

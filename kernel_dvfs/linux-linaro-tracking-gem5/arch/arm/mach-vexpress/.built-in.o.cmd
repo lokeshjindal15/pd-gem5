@@ -1,1 +1,0 @@
-cmd_arch/arm/mach-vexpress/built-in.o :=  arm-linux-gnueabi-ld -EL    -r -o arch/arm/mach-vexpress/built-in.o arch/arm/mach-vexpress/v2m.o arch/arm/mach-vexpress/ct-ca9x4.o arch/arm/mach-vexpress/platsmp.o arch/arm/mach-vexpress/hotplug.o arch/arm/mach-vexpress/pcie_gem5.o arch/arm/mach-vexpress/gem5-energy-ctrl.o 
