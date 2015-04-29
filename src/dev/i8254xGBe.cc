@@ -64,7 +64,7 @@ IGbE::IGbE(const Params *p)
       txTick(false), txFifoTick(false), rxDmaPacket(false), pktOffset(0),
       arrivalRate(0), rateTh(p->nic_rate_th_freq),
       rateTimerInterval(p->nic_rate_cal_interval), rxBitCounter(0),
-      first_arrival(true), rateCalcEvent(this),
+      enable_rate_calc(p->enable_rate_calc), first_arrival(true), rateCalcEvent(this),
       fetchDelay(p->fetch_delay), wbDelay(p->wb_delay), 
       fetchCompDelay(p->fetch_comp_delay), wbCompDelay(p->wb_comp_delay), 
       rxWriteDelay(p->rx_write_delay), txReadDelay(p->tx_read_delay),
@@ -2232,7 +2232,7 @@ IGbE::ethRxPkt(EthPacketPtr pkt)
     rxPackets++;
 
     DPRINTF(Ethernet, "RxFIFO: Receiving pcakte from wire\n");
-    if (first_arrival){
+    if (first_arrival && enable_rate_calc){
         first_arrival = false;
         schedule(rateCalcEvent, curTick() + rateTimerInterval);
     }
@@ -2241,6 +2241,7 @@ IGbE::ethRxPkt(EthPacketPtr pkt)
     if ( arrivalRate > rateTh )
     {
         DPRINTF(EthernetTiming, "FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
+        printf("FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
         postInterrupt(IT_PDGEM5); // lokeshjindal15
     }
 
