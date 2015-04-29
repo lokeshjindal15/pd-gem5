@@ -97,6 +97,7 @@ def addCommonOptions(parser):
     parser.add_option("--tap-first-delay", type="string", default='1ms')
     parser.add_option("--nic-rate-th-freq",type="long",default=1000)  # for rate calc
     parser.add_option("--nic-rate-cal-interval", type="string", default='100us') #for rate calc
+    parser.add_option("--queue-size",type="int",default=200)
 
     # system options
     parser.add_option("--list-cpu-types",

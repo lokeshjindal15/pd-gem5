@@ -56,6 +56,9 @@ class EtherLink(EtherObject):
     tcp_jmp_size0 = Param.Int(131,"latency jump point 0")
     tcp_jmp_size1 = Param.Int(323,"latency jump point 1")
     no_delay = Param.Bool(False,"If true, then we don't add/remove time stamp to out-going/in-going pkts")
+    ns_connector = Param.Bool(False,"If true, it's a etherlink which connects two NS together")
+    queue_size = Param.Int(100,"link queue size")
+
 
 class EtherBus(EtherObject):
     type = 'EtherBus'

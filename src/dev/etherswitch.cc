@@ -211,7 +211,7 @@ EtherSwitch::EtherFabric::connectAllLinks(std::vector<Interface*> &_interfaces)
                                               etherSwitch.params()->delay,
                                               etherSwitch.params()->delay_var,
                                               etherSwitch.params()->dump,
-                                              0,0,0,0,0,0,0,0,0,1515,1515,true);
+                                              0,0,0,0,0,0,0,0,0,1515,1515,true,false,0);
             link->setTxInt(itr1);
             link->setRxInt(itr2);
             std::pair<Interface*, Interface*> intPair
