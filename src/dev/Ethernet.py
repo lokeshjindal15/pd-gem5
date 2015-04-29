@@ -141,6 +141,7 @@ class IGbE(EtherDevice):
     phy_epid = Param.UInt16("Phy EPID that corresponds to device ID")
     nic_rate_th_freq = Param.UInt64(50000000,"threshold for nic arrival rate to boost freq")
     nic_rate_cal_interval = Param.Latency('200us', "Interval for calculating nic arrival rate")
+    enable_rate_calc = Param.Bool(False, "Enable or disable rate calculator")
 
 class IGbE_e1000(IGbE):
     # Older Intel 8254x based gigabit ethernet adapter

@@ -91,6 +91,7 @@ class IGbE : public EtherDevice
     uint64_t rateTh;            //m.alian threshold of changing freq arrival rates more that this
     Tick rateTimerInterval;     //m.alian interval for rate calculation
     uint64_t rxBitCounter;      //m.alian conter for bytes
+    bool enable_rate_calc;       //m.alian flag to enable or disable rate counter from command line
     bool first_arrival;
     void calcRate(){    //m.alian
        DPRINTF(EthernetTiming,"arivalRate=%lu,rxBitCounter=%lu,rateTimerInterval=%lu\n",arrivalRate,rxBitCounter,rateTimerInterval);
