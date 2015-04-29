@@ -31,7 +31,7 @@
 
 static DEFINE_PER_CPU(struct od_cpu_dbs_info_s, od_cpu_dbs_info);
 
-int pdgem5_ondemand_flag[4] = { 0, 0, 0, 0}; 
+int pdgem5_ondemand_flag[PDGEM5_FLAG_SIZE + 1] = {[0 ... PDGEM5_FLAG_SIZE] = 0}; 
 
 static struct od_ops od_ops;
 
@@ -180,10 +180,10 @@ static void od_check_cpu(int cpu, unsigned int load)
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
 
-    if (pdgem5_ondemand_flag[cpu] == 1) // skip ondemand decision cycle this time
+    if (pdgem5_ondemand_flag[cpu*CACHELINE_SIZE] == 1) // skip ondemand decision cycle this time
     {
 	// NOPRINT printk (KERN_EMERG "##### ONDEMAND od_check_cpu skipping changing frequency for CPU *%d* this time since pdgem5_ondemand_flag[%d] is *%d* and making it zero\n", cpu, cpu*CACHELINE_SIZE, pdgem5_ondemand_flag[cpu*CACHELINE_SIZE]);
-	pdgem5_ondemand_flag[cpu] = 0 ;
+	pdgem5_ondemand_flag[cpu*CACHELINE_SIZE] = 0 ;
 	return;
     }
     else // let ondemand do its normal thing

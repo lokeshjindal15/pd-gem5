@@ -3802,9 +3802,9 @@ static irqreturn_t e1000_intr(int irq, void *data)
 		// the ifs here are for extra protection so that we don't try to jack up core frequencies 
 		//	on back to back PDGEM5 interrupts in quick succession
 		// could be removed if hardware guarantees it won't send interrupts in quick succession (at least > ondemand sampling period)
-		if (!pdgem5_ondemand_flag[0])
+		if (!pdgem5_ondemand_flag[0*CACHELINE_SIZE])
 		{
-			pdgem5_ondemand_flag[0] = 1;
+			pdgem5_ondemand_flag[0*CACHELINE_SIZE] = 1;
 			if(pdgem5_freq_alternate[0] == 0)
 			{	
 				// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
@@ -3816,9 +3816,9 @@ static irqreturn_t e1000_intr(int irq, void *data)
 				pdgem5_freq_alternate[0] = 0; __cpufreq_driver_target(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min, CPUFREQ_RELATION_L);
 			} 
 		}
-		if (!pdgem5_ondemand_flag[1])
+		if (!pdgem5_ondemand_flag[1*CACHELINE_SIZE])
 		{
-			pdgem5_ondemand_flag[1] = 1;
+			pdgem5_ondemand_flag[1*CACHELINE_SIZE] = 1;
 			if(pdgem5_freq_alternate[1] == 0)
 			{	
 				// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
@@ -3831,9 +3831,9 @@ static irqreturn_t e1000_intr(int irq, void *data)
 			} 
 
 		}
-		if (!pdgem5_ondemand_flag[2])
+		if (!pdgem5_ondemand_flag[2*CACHELINE_SIZE])
 		{
-			pdgem5_ondemand_flag[2] = 1;
+			pdgem5_ondemand_flag[2*CACHELINE_SIZE] = 1;
 			if(pdgem5_freq_alternate[2] == 0)
 			{	
 				// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
@@ -3846,9 +3846,9 @@ static irqreturn_t e1000_intr(int irq, void *data)
 			} 
 
 		}
-		if (!pdgem5_ondemand_flag[3])
+		if (!pdgem5_ondemand_flag[3*CACHELINE_SIZE])
 		{
-			pdgem5_ondemand_flag[3] = 1;
+			pdgem5_ondemand_flag[3*CACHELINE_SIZE] = 1;
 			if(pdgem5_freq_alternate[3] == 0)
 			{	
 				// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");

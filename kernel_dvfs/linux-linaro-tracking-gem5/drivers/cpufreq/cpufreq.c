@@ -290,8 +290,8 @@ static void __cpufreq_notify_transition(struct cpufreq_policy *policy,
 	freqs->flags = cpufreq_driver->flags;
 	pr_debug("notification %u of frequency transition to %u kHz\n",
 		state, freqs->new);
-	printk(KERN_EMERG "notification %u of frequency transition to %u kHz\n",
-		state, freqs->new);
+	// printk(KERN_EMERG "notification %u of frequency transition to %u kHz\n",
+	//	state, freqs->new);
 
 	switch (state) {
 
@@ -321,8 +321,8 @@ static void __cpufreq_notify_transition(struct cpufreq_policy *policy,
 		adjust_jiffies(CPUFREQ_POSTCHANGE, freqs);
 		pr_debug("FREQ: %lu - CPU: %lu", (unsigned long)freqs->new,
 			(unsigned long)freqs->cpu);
-		printk(KERN_EMERG "FREQ: %lu - CPU: %lu", (unsigned long)freqs->new,
-			(unsigned long)freqs->cpu);
+		// printk(KERN_EMERG "FREQ: %lu - CPU: %lu", (unsigned long)freqs->new,
+		// 	(unsigned long)freqs->cpu);
 		trace_cpu_frequency(freqs->new, freqs->cpu);
 		srcu_notifier_call_chain(&cpufreq_transition_notifier_list,
 				CPUFREQ_POSTCHANGE, freqs);
@@ -1793,8 +1793,8 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 
 	pr_debug("target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
 			policy->cpu, target_freq, relation, old_target_freq);
-	printk(KERN_EMERG "target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
-			policy->cpu, target_freq, relation, old_target_freq);
+	// NOPRINT printk(KERN_EMERG "target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
+	// NOPRINT 		policy->cpu, target_freq, relation, old_target_freq);
 
 	/*
 	 * This might look like a redundant call as we are checking it again
@@ -1843,9 +1843,9 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 			pr_debug("%s: cpu: %d, oldfreq: %u, new freq: %u\n",
 					__func__, policy->cpu, freqs.old,
 					freqs.new);
-			printk(KERN_EMERG "%s: cpu: %d, oldfreq: %u, new freq: %u\n",
-					__func__, policy->cpu, freqs.old,
-					freqs.new);
+			// NOPRINT printk(KERN_EMERG "%s: cpu: %d, oldfreq: %u, new freq: %u\n",
+			// NOPRINT 		__func__, policy->cpu, freqs.old,
+			// NOPRINT 		freqs.new);
 
 			cpufreq_notify_transition(policy, &freqs,
 					CPUFREQ_PRECHANGE);
