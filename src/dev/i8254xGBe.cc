@@ -64,7 +64,9 @@ IGbE::IGbE(const Params *p)
       txTick(false), txFifoTick(false), rxDmaPacket(false), pktOffset(0),
       arrivalRate(0), rateTh(p->nic_rate_th_freq),
       rateTimerInterval(p->nic_rate_cal_interval), rxBitCounter(0),
-      enable_rate_calc(p->enable_rate_calc), first_arrival(true), rateCalcEvent(this),
+      enable_rate_calc(p->enable_rate_calc), first_arrival(true), disable_governor(false),
+      disable_freq_change_interval(p->disable_freq_change_interval), 
+      rateCalcEvent(this), enableGovernorEvent(this),
       fetchDelay(p->fetch_delay), wbDelay(p->wb_delay), 
       fetchCompDelay(p->fetch_comp_delay), wbCompDelay(p->wb_comp_delay), 
       rxWriteDelay(p->rx_write_delay), txReadDelay(p->tx_read_delay),
@@ -2238,11 +2240,13 @@ IGbE::ethRxPkt(EthPacketPtr pkt)
     }
     rxBitCounter += pkt->length * 8;
     DPRINTF(EthernetTiming, "FREQ: arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
-    if ( arrivalRate > rateTh )
+    if ( arrivalRate > rateTh && (disable_governor==false) )
     {
         DPRINTF(EthernetTiming, "FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
         printf("FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
         postInterrupt(IT_PDGEM5); // lokeshjindal15
+        disable_governor = true; //m.alian disable governor for disable_freq_change_interval ticks
+        schedule(enableGovernorEvent, curTick() + disable_freq_change_interval);
     }
 
     anBegin("RXQ", "Wire Recv");

@@ -93,14 +93,21 @@ class IGbE : public EtherDevice
     uint64_t rxBitCounter;      //m.alian conter for bytes
     bool enable_rate_calc;       //m.alian flag to enable or disable rate counter from command line
     bool first_arrival;
+    bool disable_governor;          //m.alian disbale or enable governor
+    Tick disable_freq_change_interval; //m.alian interval for govenor to sleep after it changed freq
     void calcRate(){    //m.alian
-       DPRINTF(EthernetTiming,"arivalRate=%lu,rxBitCounter=%lu,rateTimerInterval=%lu\n",arrivalRate,rxBitCounter,rateTimerInterval);
+        DPRINTF(EthernetTiming,"arivalRate=%lu,rxBitCounter=%lu,rateTimerInterval=%lu\n",arrivalRate,rxBitCounter,rateTimerInterval);
 
         arrivalRate = rxBitCounter*1000000/rateTimerInterval;
         rxBitCounter = 0;
         schedule(rateCalcEvent, curTick() + rateTimerInterval);
     }
     EventWrapper<IGbE, &IGbE::calcRate> rateCalcEvent; //m.alian
+    void enableGovernor(){
+        DPRINTF(EthernetTiming,"Enable governor\n");
+        disable_governor = false;
+    }
+    EventWrapper<IGbE, &IGbE::enableGovernor> enableGovernorEvent; //m.alian
     // Delays in managaging descriptors
     Tick fetchDelay, wbDelay;
     Tick fetchCompDelay, wbCompDelay;
