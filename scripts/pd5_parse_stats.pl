@@ -394,7 +394,7 @@ while ($STATS_FILE_I < $num_stats_file)
 			#print "Detected Begin\n";	
 			if ($part)
 			{
-			close OUTFILE;
+			# close OUTFILE;
 			}
 			$part++;
 
@@ -417,9 +417,9 @@ while ($STATS_FILE_I < $num_stats_file)
 			$sys_eth_rxbwpercent[$part -1] = 0;# not every phase has this parameter dumped in stats.txt
 			$sys_eth_txbwpercent[$part -1] = 0;# not every phase has this parameter dumped in stats.txt
 
-			print "Creating file $stats_file.$part\n";
-			open OUTFILE, "> $stats_file.$part";
-			print OUTFILE $line;
+			# print "Creating file $stats_file.$part\n";
+			# open OUTFILE, "> $stats_file.$part";
+			# print OUTFILE $line;
 		}
 	
 		else
@@ -640,11 +640,11 @@ while ($STATS_FILE_I < $num_stats_file)
 
 			}
 			
-			print OUTFILE $line;
+			# print OUTFILE $line;
 		}
 	}
 	
-	close OUTFILE;
+	# close OUTFILE;
 	
 	#Do not want to count the last part of stats.txt
 	$proc_total_sim_seconds -= $proc_sim_seconds[$part -1];

@@ -40,7 +40,7 @@ output = %s
 error = %s
 log = %s
 Rank=TARGET.Mips
-Requirements = ((Machine != "bert.ece.wisc.edu") && (Machine != "oct-6.ece.wisc.edu") && (Machine != "sameagle.ece.wisc.edu") && (Machine != "fozzy.ece.wisc.edu") && (Machine != "iris-33.ece.wisc.edu") && (Machine != "iris-21.ece.wisc.edu") && (Machine != "iris-16.ece.wisc.edu") && (Machine != "iris-31.ece.wisc.edu"))
+Requirements = ((Machine != "bert.ece.wisc.edu") && (Machine != "oct-6.ece.wisc.edu") && (Machine != "sameagle.ece.wisc.edu") && (Machine != "fozzy.ece.wisc.edu") && (Machine != "iris-40.ece.wisc.edu") && (Machine != "iris-35.ece.wisc.edu") && (Machine != "iris-36.ece.wisc.edu") && (Machine != "iris-38.ece.wisc.edu"))
 universe = vanilla
 getenv = true
 queue
@@ -216,7 +216,11 @@ cmd +=  '--mem-size=' + params['mem_size'] + ' ' \
 	'--tap-first-delay=' + params['tap_first_delay'] + ' '\
 	'--periodic-dump-stats=' + params['periodic_dump_stats'] + ' '\
 	'--nic-rate-th-freq=' + params['nic_rate_th_freq'] + ' '\
-	'--nic-rate-cal-interval=' + params['nic_rate_cal_interval'] + ' '
+	'--nic-rate-cal-interval=' + params['nic_rate_cal_interval'] + ' '\
+	'--enable-rate-calc=' + params['enable_rate_calc'] + ' '\
+	'--disable-freq-change-interval=' + params['disable_freq_change_interval'] + ' '\
+	'--nic-rate-th-low-freq=' + params['nic_rate_th_low_freq'] + ' '\
+	'--nic-rate-th-low-cnt=' + params['nic_rate_th_low_cnt'] + ' '
 
 
 #cmd_no_sync is just for switch usage, because we don't add --num-cpu option to it

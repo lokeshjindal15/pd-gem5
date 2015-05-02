@@ -108,7 +108,8 @@ class IGbE : public EtherDevice
     EventWrapper<IGbE, &IGbE::calcRate> rateCalcEvent; //m.alian
     void enableGovernor(){
         DPRINTF(EthernetTiming,"Enable governor\n");
-        disable_governor = false;
+        std::cout << "REENABLE PDGEM5GOVERNOR @ TICK :" << curTick() << ":\n";
+	disable_governor = false;
     }
     EventWrapper<IGbE, &IGbE::enableGovernor> enableGovernorEvent; //m.alian
     // Delays in managaging descriptors

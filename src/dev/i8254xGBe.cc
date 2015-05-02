@@ -2250,7 +2250,8 @@ IGbE::ethRxPkt(EthPacketPtr pkt)
     if ( ((arrivalRate > rateTh) || (rateAboveLowThCounter > rate_above_th)) && (disable_governor==false) )
     {
         DPRINTF(EthernetTiming, "FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
-        printf("FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
+        std::cout << "FREQ: SENDING PDGEM5INT @ TICK :" << curTick() << ": High pkt arrival rate, boost frequency!, arrival rate=" << arrivalRate << ", threshold=" << rateTh <<
+			 ", rateAboveLowThCounter=" << rateAboveLowThCounter << ", rate_above_th=" << rate_above_th << std::endl;
         postInterrupt(IT_PDGEM5); // lokeshjindal15
         disable_governor = true; //m.alian disable governor for disable_freq_change_interval ticks
         schedule(enableGovernorEvent, curTick() + disable_freq_change_interval);
