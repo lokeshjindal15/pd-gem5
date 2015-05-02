@@ -239,7 +239,7 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
 
     # Attach any PCI devices this platform supports
     self.realview.attachPciDevices(options.mac, options.nic_rate_th_freq, options.nic_rate_cal_interval, options.enable_rate_calc,
-                options.disable_freq_change_interval)
+        options.disable_freq_change_interval, options.nic_rate_th_low_freq, options.nic_rate_th_low_cnt)
 
     if options.switch and (options.num_nodes == 4 or options.num_nodes == 5 or options.num_nodes == 8
                 or options.num_nodes == 16 or options.num_nodes == 24):

@@ -66,9 +66,10 @@ IGbE::IGbE(const Params *p)
       rateTimerInterval(p->nic_rate_cal_interval), rxBitCounter(0),
       enable_rate_calc(p->enable_rate_calc), first_arrival(true), disable_governor(false),
       disable_freq_change_interval(p->disable_freq_change_interval), 
+      rateAboveLowThCounter(0), rate_above_th(p->rate_above_th), rateTh_low(p->nic_rate_th_low_freq),
       rateCalcEvent(this), enableGovernorEvent(this),
-      fetchDelay(p->fetch_delay), wbDelay(p->wb_delay), 
-      fetchCompDelay(p->fetch_comp_delay), wbCompDelay(p->wb_comp_delay), 
+      fetchDelay(p->fetch_delay), wbDelay(p->wb_delay),
+      fetchCompDelay(p->fetch_comp_delay), wbCompDelay(p->wb_comp_delay),
       rxWriteDelay(p->rx_write_delay), txReadDelay(p->tx_read_delay),
       rdtrEvent(this), radvEvent(this),
       tadvEvent(this), tidvEvent(this), tickEvent(this), interEvent(this),
@@ -2240,7 +2241,13 @@ IGbE::ethRxPkt(EthPacketPtr pkt)
     }
     rxBitCounter += pkt->length * 8;
     DPRINTF(EthernetTiming, "FREQ: arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
-    if ( arrivalRate > rateTh && (disable_governor==false) )
+
+    if ( arrivalRate > rateTh_low)
+        rateAboveLowThCounter ++;
+    else
+        rateAboveLowThCounter = 0;
+
+    if ( ((arrivalRate > rateTh) || (rateAboveLowThCounter > rate_above_th)) && (disable_governor==false) )
     {
         DPRINTF(EthernetTiming, "FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);
         printf("FREQ: High pkt arrival rate, boost frequency!, arrival rate=%lu,threshold=%lu\n",arrivalRate,rateTh);

@@ -95,6 +95,9 @@ class IGbE : public EtherDevice
     bool first_arrival;
     bool disable_governor;          //m.alian disbale or enable governor
     Tick disable_freq_change_interval; //m.alian interval for govenor to sleep after it changed freq
+    int rateAboveLowThCounter;      //m.alian num of consequative intervals which arrival rate is above low_th
+    int rate_above_th;  //m.alian <parameter> change frequency when num of consequative intervals which arrival rate is above low_th is more than this
+    uint64_t rateTh_low;        //m.alian low threshold of changing freq arrival rates
     void calcRate(){    //m.alian
         DPRINTF(EthernetTiming,"arivalRate=%lu,rxBitCounter=%lu,rateTimerInterval=%lu\n",arrivalRate,rxBitCounter,rateTimerInterval);
 

@@ -143,6 +143,8 @@ class IGbE(EtherDevice):
     nic_rate_cal_interval = Param.Latency('200us', "Interval for calculating nic arrival rate")
     enable_rate_calc = Param.Bool(False, "Enable or disable rate calculator")
     disable_freq_change_interval = Param.Latency('5ms', "Disable changing frequency for a while after we change it once")
+    nic_rate_th_low_freq = Param.UInt64(10000000,"low threshold for nic arrival rate to boost freq")
+    rate_above_th = Param.UInt32(5,"change frequency when num of consequative intervals which arrival rate is above low_th is more than this")
 
 class IGbE_e1000(IGbE):
     # Older Intel 8254x based gigabit ethernet adapter

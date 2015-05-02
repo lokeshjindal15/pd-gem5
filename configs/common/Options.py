@@ -95,11 +95,13 @@ def addCommonOptions(parser):
     parser.add_option("--tcp-jmp-delay1", type="string", default='0us')
     parser.add_option("--server", type="string", default='True')
     parser.add_option("--tap-first-delay", type="string", default='1ms')
-    parser.add_option("--nic-rate-th-freq",type="long",default=1000)  # for rate calc
+    parser.add_option("--nic-rate-th-freq",type="long",default=50)  # threshold for nic awaqre dvfs governor (Mbps)
     parser.add_option("--nic-rate-cal-interval", type="string", default='100us') #for rate calc
     parser.add_option("--enable-rate-calc", type="string", default='False') #enable or disable rate calc, by default it's disabled
     parser.add_option("--queue-size",type="int",default=200)
     parser.add_option("--disable-freq-change-interval", type="string", default='5ms')
+    parser.add_option("--nic-rate-th-low-freq",type="long",default=10)  # low threshold for nic governor (Mbps)
+    parser.add_option("--nic-rate-th-low-cnt",type="int",default=5)  # how many times to see arrival rate above low threshold before
 
     # system options
     parser.add_option("--list-cpu-types",
