@@ -182,7 +182,7 @@ TapListener::accept()
 
 EtherTap::EtherTap(const Params *p)
     : EtherObject(p), socket(-1), buflen(p->bufsz), dump(p->dump),
-      interface(NULL), noDelay(p->no_delay), txEvent(this), tapInEvent(this)
+      interface(NULL), noDelay(p->no_delay), delay(p->delay), txEvent(this), tapInEvent(this)
 {
     if (ListenSocket::allDisabled())
         fatal("All listeners are disabled! EtherTap can't work!");
@@ -245,7 +245,7 @@ EtherTap::recvPacket(EthPacketPtr packet)
         int j=0;
         Tick_int=0;
         char tick_cstr[TickDigits+1];
-        Tick_int = curTick() % 1000000000000;
+        Tick_int = (curTick() + delay) % 1000000000000;
         sprintf(tick_cstr,"%lu",Tick_int);
         for(j=0;j<packet->length;j++)
             buff[j]=packet->data[j];
@@ -317,7 +317,12 @@ EtherTap::process()
             memmove(SenderTick,SenderTick+k,TickDigits-k);
             SenderTick[TickDigits-k] = '\0';
             uint64_t sTick = extractTick(SenderTick) + curTick() - curTick()%1000000000000;
-
+            //sanity check
+            //if we had a transition to next second of simulation while packet was in flight!
+            if (sTick > (curTick() + 500000000000))
+                sTick = sTick - 1000000000000;
+            if (sTick < curTick() - 500000000000)
+                sTick = sTick + 1000000000000;
             EthPacketPtr packet;
             packet = make_shared<EthPacketData>(data_len);
             packet->length = data_len;
