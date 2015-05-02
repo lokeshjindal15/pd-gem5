@@ -493,7 +493,7 @@ class VExpress_EMM(RealView):
         self.ethernet = IGbE_e1000(pci_bus=0, pci_dev=0, pci_func=0,
             InterruptLine=1, InterruptPin=1, hardware_address = mac,
             nic_rate_th_freq = nic_eth, nic_rate_cal_interval = interval, enable_rate_calc = enable,
-            disable_freq_change_interval = gov_disable_interval, rate_above_th=rate_th_cnt, rateTh_low=rate_th_low)
+            disable_freq_change_interval = gov_disable_interval, rate_above_th=rate_th_cnt, nic_rate_th_low_freq=rate_th_low)
         self.ide = IdeController(disks = [], pci_bus=0, pci_dev=1, pci_func=0,
                                  InterruptLine=2, InterruptPin=2)
 
