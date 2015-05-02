@@ -88,6 +88,7 @@ class EtherTap(EtherObject):
     port = Param.UInt16(3500, "tap port")
     tap = MasterPort("EtherTap interface")
     no_delay = Param.Bool(False,"If true, then we don't add/remove time stamp to out-going/in-going pkts")
+    delay = Param.Latency('0us', "packet transmit delay")
 
 class EtherDump(SimObject):
     type = 'EtherDump'

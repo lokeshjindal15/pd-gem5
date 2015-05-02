@@ -66,7 +66,7 @@ uint64_t getTick(EthPacketPtr pkt);
 void setTick(uint64_t tick,EthPacketPtr pkt);
 
 uint64_t getTick(EthPacketPtr pkt) {
-
+    Tick sTick;
     DPRINTF(Ethernet, "get packet time stamp\n");
 
     char SenderTick[TickDigits+1];
@@ -77,7 +77,12 @@ uint64_t getTick(EthPacketPtr pkt) {
             break;
     memmove(SenderTick,SenderTick+k,TickDigits-k);
     SenderTick[TickDigits-k] = '\0';
-    return atol(SenderTick) + curTick() - curTick()%1000000000000;
+    sTick = atol(SenderTick) + curTick() - curTick()%1000000000000;
+    if (sTick > curTick() + 500000000000)
+        sTick = sTick - 1000000000000;
+    if (sTick < curTick() - 500000000000)
+        sTick = sTick + 1000000000000;
+    return sTick;
 }
 
 void setTick(uint64_t tick,EthPacketPtr pkt){

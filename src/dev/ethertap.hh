@@ -81,6 +81,7 @@ class EtherTap : public EtherObject
     std::queue<EthPacketPtr> packetBuffer;
     EtherTapInt *interface;
     bool noDelay;
+    Tick delay;
 
     void process();
     void enqueue(EthPacketData *packet);
