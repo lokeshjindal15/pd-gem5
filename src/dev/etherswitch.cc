@@ -235,6 +235,7 @@ EtherSwitch::EtherFabric::forwardingEngine()
     Interface *receiver;
     Interface *sender;
     bool anyPacket = false;
+    bool dropPkt = false;
     // we use a temporary vector copy of interfaces because
     // the objects in interfaces may be moved around in the
     // for loop, i.e., the copy is used to ensure the iterators
@@ -258,9 +259,12 @@ EtherSwitch::EtherFabric::forwardingEngine()
         Net::EthAddr destMacAddr(destAddr);
         Net::EthAddr srcMacAddr(srcAddr);
 
-        learnSenderAddr(srcMacAddr, sender);
+        dropPkt = learnSenderAddr(srcMacAddr, sender);
         receiver = lookupDestPort(destMacAddr);
 
+        if (dropPkt) {
+            DPRINTF(Ethernet, "packet droped!");
+        }
         if (!receiver || destMacAddr.multicast() || destMacAddr.broadcast()) {
             broadcast(packet, sender);
         } else {
@@ -313,7 +317,7 @@ EtherSwitch::EtherFabric::lookupDestPort(Net::EthAddr destMacAddr)
 
 // cache the MAC address for the device connected to
 // a given port
-void
+bool
 EtherSwitch::EtherFabric::learnSenderAddr(Net::EthAddr srcMacAddr,
                                           Interface *sender)
 {
@@ -331,8 +335,15 @@ EtherSwitch::EtherFabric::learnSenderAddr(Net::EthAddr srcMacAddr,
         forwardingTableEntry.arrivalTime = curTick();
         forwardingTable.insert(std::pair<uint64_t, SwitchTableEntry>(
             uint64_t(srcMacAddr), forwardingTableEntry));
+        return false;
+    } else if(it->second.interface->name().compare(sender->name())){
+        DPRINTF(Ethernet, "recieved the same packet from another port "
+                "Drop it, MAC=%x port=%s\n", uint64_t(srcMacAddr),
+                sender->name());
+        return true;
     } else {
         it->second.arrivalTime = curTick();
+        return false;
     }
     // should also schedule the removal of an entry after it's TTL expires
 }

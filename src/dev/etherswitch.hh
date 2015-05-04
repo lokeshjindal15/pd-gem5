@@ -101,7 +101,7 @@ class EtherSwitch : public EtherObject
         void forwardingEngine();
         void transmissionEngine();
         Interface* lookupDestPort(Net::EthAddr destAddr);
-        void learnSenderAddr(Net::EthAddr srcAddr, Interface* sender);
+        bool learnSenderAddr(Net::EthAddr srcAddr, Interface* sender);
         void updateLRG(Interface *interface);
         void broadcast(EthPacketPtr packet, Interface *sender);
 
