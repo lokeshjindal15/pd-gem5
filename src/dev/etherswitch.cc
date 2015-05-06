@@ -264,6 +264,7 @@ EtherSwitch::EtherFabric::forwardingEngine()
 
         if (dropPkt) {
             DPRINTF(Ethernet, "packet droped!");
+            sender->popInputPacket();
         }
         if (!receiver || destMacAddr.multicast() || destMacAddr.broadcast()) {
             broadcast(packet, sender);
@@ -282,7 +283,7 @@ EtherSwitch::EtherFabric::forwardingEngine()
     if (anyPacket){
         if(!retryEvent.scheduled()){
             DPRINTF(Ethernet, "Still there might be some packets in the input queue\n");
-            etherSwitch.schedule(retryEvent, curTick() + 1000);
+            etherSwitch.schedule(retryEvent, curTick() + 10000);
         }
     }
 }

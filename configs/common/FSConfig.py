@@ -241,7 +241,7 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
     self.realview.attachPciDevices(options.mac, options.nic_rate_th_freq, options.nic_rate_cal_interval, options.enable_rate_calc,
         options.disable_freq_change_interval, options.nic_rate_th_low_freq, options.nic_rate_th_low_cnt)
 
-    if options.switch and (options.num_nodes == 4 or options.num_nodes == 5 or options.num_nodes == 8
+    if options.network_topology == "star" and options.switch and (options.num_nodes == 4 or options.num_nodes == 5 or options.num_nodes == 8
                 or options.num_nodes == 16 or options.num_nodes == 24):
         self.switch = EtherSwitch(port_count = options.num_nodes)
 
@@ -361,8 +361,96 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
             self.etherlink22.int1 = self.switch.interface[22]
             self.etherlink23.int0 = self.ethertap23.tap
             self.etherlink23.int1 = self.switch.interface[23]
+    elif options.network_topology == "mesh" and options.switch and options.num_nodes == 12:
+        self.switch0 = EtherSwitch(port_count = 6)
+        self.switch1 = EtherSwitch(port_count = 6)
+        self.switch2 = EtherSwitch(port_count = 6)
+
+        self.etherlinkconn0 = EtherLink(no_delay = "False",ns_connector="True",
+            delay=options.link_delay,delay_var=options.link_delay_var,
+            tcp_speed = options.tcp_speed, no_ip_speed = options.no_ip_speed,
+            udp_speed = options.udp_speed,tcp_retry_speed = options.tcp_retry_speed,
+            udp_retry_speed = options.udp_retry_speed,tcp_process_speed = options.tcp_process_speed)
+
+        self.etherlinkconn1 = EtherLink(no_delay = "False",ns_connector="True",
+            delay=options.link_delay,delay_var=options.link_delay_var,
+            tcp_speed = options.tcp_speed, no_ip_speed = options.no_ip_speed,
+            udp_speed = options.udp_speed,tcp_retry_speed = options.tcp_retry_speed,
+            udp_retry_speed = options.udp_retry_speed,tcp_process_speed = options.tcp_process_speed)
+
+        self.etherlinkconn2 = EtherLink(no_delay = "False",ns_connector="True",
+            delay=options.link_delay,delay_var=options.link_delay_var,
+            tcp_speed = options.tcp_speed, no_ip_speed = options.no_ip_speed,
+            udp_speed = options.udp_speed,tcp_retry_speed = options.tcp_retry_speed,
+            udp_retry_speed = options.udp_retry_speed,tcp_process_speed = options.tcp_process_speed)
+
+        self.etherlink00 = EtherLink(no_delay = "True")
+        self.etherlink01 = EtherLink(no_delay = "True")
+        self.etherlink02 = EtherLink(no_delay = "True")
+        self.etherlink03 = EtherLink(no_delay = "True")
+
+        self.etherlink10 = EtherLink(no_delay = "True")
+        self.etherlink11 = EtherLink(no_delay = "True")
+        self.etherlink12 = EtherLink(no_delay = "True")
+        self.etherlink13 = EtherLink(no_delay = "True")
+
+        self.etherlink20 = EtherLink(no_delay = "True")
+        self.etherlink21 = EtherLink(no_delay = "True")
+        self.etherlink22 = EtherLink(no_delay = "True")
+        self.etherlink23 = EtherLink(no_delay = "True")
+
+        self.ethertap00 = EtherTap(no_delay = "True")
+        self.ethertap01 = EtherTap(no_delay = "True")
+        self.ethertap02 = EtherTap(no_delay = "True")
+        self.ethertap03 = EtherTap(no_delay = "True")
+
+        self.ethertap10 = EtherTap(no_delay = "True")
+        self.ethertap11 = EtherTap(no_delay = "True")
+        self.ethertap12 = EtherTap(no_delay = "True")
+        self.ethertap13 = EtherTap(no_delay = "True")
+
+        self.ethertap20 = EtherTap(no_delay = "True")
+        self.ethertap21 = EtherTap(no_delay = "True")
+        self.ethertap22 = EtherTap(no_delay = "True")
+        self.ethertap23 = EtherTap(no_delay = "True")
+
+        self.etherlink00.int0 = self.ethertap00.tap
+        self.etherlink00.int1 = self.switch0.interface[0]
+        self.etherlink01.int0 = self.ethertap01.tap
+        self.etherlink01.int1 = self.switch0.interface[1]
+        self.etherlink02.int0 = self.ethertap02.tap
+        self.etherlink02.int1 = self.switch0.interface[2]
+        self.etherlink03.int0 = self.ethertap03.tap
+        self.etherlink03.int1 = self.switch0.interface[3]
+
+        self.etherlink10.int0 = self.ethertap10.tap
+        self.etherlink10.int1 = self.switch1.interface[0]
+        self.etherlink11.int0 = self.ethertap11.tap
+        self.etherlink11.int1 = self.switch1.interface[1]
+        self.etherlink12.int0 = self.ethertap12.tap
+        self.etherlink12.int1 = self.switch1.interface[2]
+        self.etherlink13.int0 = self.ethertap13.tap
+        self.etherlink13.int1 = self.switch1.interface[3]
+
+        self.etherlink20.int0 = self.ethertap20.tap
+        self.etherlink20.int1 = self.switch2.interface[0]
+        self.etherlink21.int0 = self.ethertap21.tap
+        self.etherlink21.int1 = self.switch2.interface[1]
+        self.etherlink22.int0 = self.ethertap22.tap
+        self.etherlink22.int1 = self.switch2.interface[2]
+        self.etherlink23.int0 = self.ethertap23.tap
+        self.etherlink23.int1 = self.switch2.interface[3]
+
+        self.etherlinkconn0.int0 = self.switch0.interface[4]
+        self.etherlinkconn0.int1 = self.switch1.interface[4]
+        self.etherlinkconn1.int0 = self.switch0.interface[5]
+        self.etherlinkconn1.int1 = self.switch2.interface[4]
+        self.etherlinkconn2.int0 = self.switch2.interface[5]
+        self.etherlinkconn2.int1 = self.switch1.interface[5]
+
+ 
     elif options.eth and options.dual == None:
-        self.ethertap0 = EtherTap(port=options.tap_port)
+        self.ethertap0 = EtherTap(port=options.tap_port, delay = options.link_delay)
         self.etherlink = EtherLink(delay=options.link_delay,delay_var=options.link_delay_var,
                 tcp_speed = options.tcp_speed, no_ip_speed = options.no_ip_speed,
                 udp_speed = options.udp_speed,tcp_retry_speed = options.tcp_retry_speed,

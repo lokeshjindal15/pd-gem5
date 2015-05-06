@@ -619,7 +619,7 @@ EtherLink::Link::transmit(EthPacketPtr pkt)
 
     if(noDelay){
         DPRINTF(Ethernet,"No Delay enabled!\n");
-        txDone(pkt,0);
+        parent->schedule(doneEvent, curTick() + 1000);
         return true;
     }
 
@@ -789,8 +789,11 @@ QueueSizeDecEvent::unserialize(Checkpoint *cp, const string &section,
 }
 
 OrderingEvent::OrderingEvent(EtherLink::Link *l, EthPacketPtr p, Tick ts)
-    : Event(Default_Pri, AutoSerialize | AutoDelete), link(l), packet(p), stick(ts)
+    : Event(Default_Pri, AutoSerialize | AutoDelete), link(l), stick(ts)
 {
+    packet = make_shared<EthPacketData>(p->length);
+    packet->length = p->length;
+    memcpy(packet->data, p->data, p->length);
 }
 
 void
