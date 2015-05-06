@@ -132,101 +132,104 @@ while ($OUT_FILE_I < $num_out_file)
 	if($MAXINTS == 0)
 	{
 		print "***** WARNING ***** MAXINTS is $MAXINTS for file $out_file\n";
-		exit;
+		# exit;
 	}
-
-	open OUT_FILE, $out_file or die $!;
-	my $line = "";
-	my @interrupt;
-	my @dump_interrupt;
-
-	my $int_num;
-	$int_num = 0;
-	while ($line = <OUT_FILE>)
+	else # generate pdgem5int.csv file since MAXINTS > 0
 	{
-		if ($line =~ /.*SENDING PDGEM5INT @ TICK :(\d{9})\d{4}:/)
+		open OUT_FILE, $out_file or die $!;
+		my $line = "";
+		my @interrupt;
+		my @dump_interrupt;
+
+		my $int_num;
+		$int_num = 0;
+		while ($line = <OUT_FILE>)
 		{
-			$interrupt[$int_num] = $1;
-			$interrupt[$int_num] = ($1 - $BEGIN_TICK) / 100000000; # reading only 9 digits out of 13 so divide by 10^8 instead of 10^12 
-			$int_num = $int_num + 1;
-			# print "int_num = $int_num and interrupt is $interrupt[$int_num]\n";
+			if ($line =~ /.*SENDING PDGEM5INT @ TICK :(\d{9})\d{4}:/)
+			{
+				$interrupt[$int_num] = $1;
+				$interrupt[$int_num] = ($1 - $BEGIN_TICK) / 100000000; # reading only 9 digits out of 13 so divide by 10^8 instead of 10^12 
+				$int_num = $int_num + 1;
+				# print "int_num = $int_num and interrupt is $interrupt[$int_num]\n";
+			}
+			# else
+			# {
+			# 	print "ERROR! tick match failed for line $line for file $out_file\n";
+			# 	print "Exiting ...\n";
+			# 	exit;
+			# }
 		}
-		# else
+
+		close OUT_FILE;
+		if ($int_num != $MAXINTS)
+		{
+			print "***** ERROR! int_num = $int_num NOT EQUAL TO MAXINTS = $MAXINTS for file $out_file Exiting ...\n";
+			exit;
+		}
+
+		# $int_num = 0;
+		# my $iter = 0;
+		# while ($iter < $NUMPOINTS)
 		# {
-		# 	print "ERROR! tick match failed for line $line for file $out_file\n";
-		# 	print "Exiting ...\n";
+		# 	if (($int_num < $MAXINTS) && ($interrupt[$int_num] < $ref_sim_sec[$iter]))
+		# 	{
+		# 		while (($interrupt[$int_num] < $ref_sim_sec[$iter]))
+		# 		{
+		# 			$dump_interrupt[$iter] = 100;
+		# 			$int_num++;
+		# 			$iter++;
+		# 		}
+		# 	}
+		# 	else
+		# 	{
+		# 		$dump_interrupt[$iter] = 0;
+		# 		$iter++;
+		# 	}
+		# }
+
+		# if ($int_num != $MAXINTS)
+		# {
+		# 	print "ERROR! After populating dump_interrupt, int_num = $int_num DOES NO MATCH MAXINTS = $MAXINTS Exiting ...";
 		# 	exit;
 		# }
-	}
 
-	close OUT_FILE;
-	if ($int_num != $MAXINTS)
-	{
-		print "***** ERROR! int_num = $int_num NOT EQUAL TO MAXINTS = $MAXINTS for file $out_file Exiting ...\n";
-		exit;
-	}
-
-	# $int_num = 0;
-	# my $iter = 0;
-	# while ($iter < $NUMPOINTS)
-	# {
-	# 	if (($int_num < $MAXINTS) && ($interrupt[$int_num] < $ref_sim_sec[$iter]))
-	# 	{
-	# 		while (($interrupt[$int_num] < $ref_sim_sec[$iter]))
-	# 		{
-	# 			$dump_interrupt[$iter] = 100;
-	# 			$int_num++;
-	# 			$iter++;
-	# 		}
-	# 	}
-	# 	else
-	# 	{
-	# 		$dump_interrupt[$iter] = 0;
-	# 		$iter++;
-	# 	}
-	# }
-
-	# if ($int_num != $MAXINTS)
-	# {
-	# 	print "ERROR! After populating dump_interrupt, int_num = $int_num DOES NO MATCH MAXINTS = $MAXINTS Exiting ...";
-	# 	exit;
-	# }
-
-	$int_num = 0;
-	$iter = 0;
-	while ($iter < $NUMPOINTS)
-	{
-		if (($interrupt[$int_num] < $time_array[$iter]) && ($int_num < $MAXINTS))
+		$int_num = 0;
+		$iter = 0;
+		while ($iter < $NUMPOINTS)
 		{
-			$dump_interrupt[$iter] = 100;
-			$iter++;
-			$int_num++;
+			if (($interrupt[$int_num] < $time_array[$iter]) && ($int_num < $MAXINTS))
+			{
+				$dump_interrupt[$iter] = 100;
+				$iter++;
+				$int_num++;
+			}
+			else
+			{
+				$dump_interrupt[$iter] = 0;
+				$iter++;
+			}
 		}
-		else
+		if ($int_num != $MAXINTS)
 		{
-			$dump_interrupt[$iter] = 0;
+			print "ERROR! After populating dump_interrupt, int_num = $int_num DOES NO MATCH MAXINTS = $MAXINTS Exiting ...";
+			exit;
+		}
+		
+		print "Let's create the csv file $out_dir/m5out/pdgem5int.csv\n";
+		open F1, ">$out_dir/m5out/pdgem5int.csv" or die $!;
+		print F1 "cumtime,intornot\n";
+		
+		$iter = 0;
+		while ($iter < $NUMPOINTS)
+		{
+			print F1 "$time_array[$iter], $dump_interrupt[$iter]\n";
 			$iter++;
 		}
-	}
-	if ($int_num != $MAXINTS)
-	{
-		print "ERROR! After populating dump_interrupt, int_num = $int_num DOES NO MATCH MAXINTS = $MAXINTS Exiting ...";
-		exit;
-	}
-	
-	print "Let's create the csv file $out_dir/m5out/pdgem5int.csv\n";
-	open F1, ">$out_dir/m5out/pdgem5int.csv" or die $!;
-	print F1 "cumtime,intornot\n";
-	
-	$iter = 0;
-	while ($iter < $NUMPOINTS)
-	{
-		print F1 "$time_array[$iter], $dump_interrupt[$iter]\n";
-		$iter++;
-	}
-	close F1;
+		close F1;
 
-	close $OUT_FILE;
+		# close $OUT_FILE;
+
+	} # end of creating the pdgem5int.csv file
 	print "########################################################################################################";
 	$OUT_FILE_I++;
 }
