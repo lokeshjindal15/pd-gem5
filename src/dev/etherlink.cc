@@ -240,6 +240,8 @@ class QueueSizeDecEvent : public Event
     EtherLink::Link *link;
 
   public:
+    // non-scheduling version for createForUnserialize()
+    QueueSizeDecEvent();
     QueueSizeDecEvent(EtherLink::Link *link);
 
     void process(){
@@ -251,6 +253,8 @@ class QueueSizeDecEvent : public Event
     void unserialize(Checkpoint *cp, const string &section) {}
     void unserialize(Checkpoint *cp, const string &section,
                      EventQueue *eventq);
+    static Serializable *createForUnserialize(Checkpoint *cp,
+                                              const string &section);
 };
 
 void
@@ -753,6 +757,10 @@ EtherLinkParams::create()
 }
 
 
+QueueSizeDecEvent::QueueSizeDecEvent()
+    : Event(Default_Pri, AutoSerialize | AutoDelete), link(NULL)
+{
+}
 
 
 QueueSizeDecEvent::QueueSizeDecEvent(EtherLink::Link *l)
@@ -787,6 +795,15 @@ QueueSizeDecEvent::unserialize(Checkpoint *cp, const string &section,
 
     link = static_cast<EtherLink*>(parent)->link[number];
 }
+
+Serializable *
+QueueSizeDecEvent::createForUnserialize(Checkpoint *cp, const string &section)
+{
+    return new QueueSizeDecEvent();
+}
+
+REGISTER_SERIALIZEABLE("QueueSizeDecEvent", QueueSizeDecEvent)
+
 
 OrderingEvent::OrderingEvent(EtherLink::Link *l, EthPacketPtr p, Tick ts)
     : Event(Default_Pri, AutoSerialize | AutoDelete), link(l), stick(ts)
