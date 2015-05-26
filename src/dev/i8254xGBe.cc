@@ -63,11 +63,13 @@ IGbE::IGbE(const Params *p)
       rxFifo(p->rx_fifo_size), txFifo(p->tx_fifo_size), rxTick(false),
       txTick(false), txFifoTick(false), rxDmaPacket(false), pktOffset(0),
       arrivalRate(0), rateTh(p->nic_rate_th_freq),
-      rateTimerInterval(p->nic_rate_cal_interval), rxBitCounter(0),
-      enable_rate_calc(p->enable_rate_calc), first_arrival(true), disable_governor(false),
+      rateTimerInterval(p->nic_rate_cal_interval), rateTimerInterval_tx(1000000000), 
+      rxBitCounter(0), txBitCounter(0),
+      enable_rate_calc(p->enable_rate_calc), enable_rate_calc_tx(p->enable_tx_rate_calc),
+      first_arrival(true), first_arrival_tx(true), disable_governor(false),
       disable_freq_change_interval(p->disable_freq_change_interval), 
       rateAboveLowThCounter(0), rate_above_th(p->rate_above_th), rateTh_low(p->nic_rate_th_low_freq),
-      rateCalcEvent(this), enableGovernorEvent(this),
+      rateCalcEvent(this), rateCalcEvent_tx(this), enableGovernorEvent(this),
       fetchDelay(p->fetch_delay), wbDelay(p->wb_delay),
       fetchCompDelay(p->fetch_comp_delay), wbCompDelay(p->wb_comp_delay),
       rxWriteDelay(p->rx_write_delay), txReadDelay(p->tx_read_delay),
@@ -2425,7 +2427,6 @@ IGbE::txWire()
         return;
     }
 
-
     anPq("TXQ", "TX FIFO Q");
     if (etherInt->sendPacket(txFifo.front())) {
         cpa->hwQ(CPA::FL_NONE, sys, macAddr, "TXQ", "WireQ", 0);
@@ -2446,6 +2447,13 @@ IGbE::txWire()
         txBytes += txFifo.front()->length;
         txPackets++;
         txFifoTick = false;
+
+        txBitCounter += txFifo.front()->length * 8;
+        if (first_arrival_tx){
+            printf("first event echeduled\n");
+            first_arrival_tx = false;
+            schedule(rateCalcEvent_tx, curTick() + rateTimerInterval_tx);
+        }
 
         txFifo.pop();
     } else {

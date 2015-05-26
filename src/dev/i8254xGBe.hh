@@ -88,11 +88,16 @@ class IGbE : public EtherDevice
     // Number of bytes copied from current RX packet
     unsigned pktOffset;
     uint64_t arrivalRate;       //m.alian
+    uint64_t transmitRate;       //m.alian
     uint64_t rateTh;            //m.alian threshold of changing freq arrival rates more that this
     Tick rateTimerInterval;     //m.alian interval for rate calculation
+    Tick rateTimerInterval_tx;     //m.alian interval for rate calculation tx
     uint64_t rxBitCounter;      //m.alian conter for bytes
+    uint64_t txBitCounter;      //m.alian conter for bytes
     bool enable_rate_calc;       //m.alian flag to enable or disable rate counter from command line
+    bool enable_rate_calc_tx;       //m.alian flag to enable or disable rate counter tx from command line
     bool first_arrival;
+    bool first_arrival_tx;
     bool disable_governor;          //m.alian disbale or enable governor
     Tick disable_freq_change_interval; //m.alian interval for govenor to sleep after it changed freq
     int rateAboveLowThCounter;      //m.alian num of consequative intervals which arrival rate is above low_th
@@ -106,6 +111,16 @@ class IGbE : public EtherDevice
         schedule(rateCalcEvent, curTick() + rateTimerInterval);
     }
     EventWrapper<IGbE, &IGbE::calcRate> rateCalcEvent; //m.alian
+
+    void calcRate_tx(){    //m.alian
+        transmitRate = txBitCounter*1000000/rateTimerInterval_tx;
+
+        printf("%lu %lu %lu\n",curTick(),txBitCounter,transmitRate);
+        txBitCounter = 0;
+        schedule(rateCalcEvent_tx, curTick() + rateTimerInterval_tx);
+    }
+    EventWrapper<IGbE, &IGbE::calcRate_tx> rateCalcEvent_tx; //m.alian
+
     void enableGovernor(){
         DPRINTF(EthernetTiming,"Enable governor\n");
         std::cout << "REENABLE PDGEM5GOVERNOR @ TICK :" << curTick() << ":\n";
