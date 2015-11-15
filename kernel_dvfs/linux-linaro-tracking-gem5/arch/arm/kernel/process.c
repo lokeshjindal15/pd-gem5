@@ -174,9 +174,15 @@ void (*arm_pm_idle)(void);
 static void default_idle(void)
 {
 	if (arm_pm_idle)
+        {
+                // printk (KERN_EMERG "##### inside default idle arm_pm_idle will be called\n");
 		arm_pm_idle();
+        }
 	else
+        {
+                // printk (KERN_EMERG "##### inside default idle arm_pm_idle not found! cpu_do_idle will be called\n");
 		cpu_do_idle();
+        }
 	local_irq_enable();
 }
 

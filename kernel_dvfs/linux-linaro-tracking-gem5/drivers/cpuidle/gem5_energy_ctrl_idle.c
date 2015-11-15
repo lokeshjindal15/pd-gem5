@@ -38,8 +38,9 @@ static int gem5_enter_idle(struct cpuidle_device *dev,
 			       int index)
 {
 	// at91_standby();
-        pr_info("%s: gem5_enter_idle has been called\n", __func__);
-	return index;
+        printk (KERN_EMERG "##### gem5_enter_idle has been called for CORE:%d\n", dev->cpu);
+	pdgem5_energy_ctrl_enter_c1((int) dev->cpu);
+        return index;
 }
 
 static struct cpuidle_driver gem5_idle_driver = {
@@ -49,7 +50,9 @@ static struct cpuidle_driver gem5_idle_driver = {
 	.states[1]		= {
 		.enter			= gem5_enter_idle,
 		.exit_latency		= 10,
-		.target_residency	= 10000,
+		// .target_residency	= 10000,
+		// .target_residency	= 1000,
+		.target_residency	= 100,
 		.flags			= CPUIDLE_FLAG_TIME_VALID,
 		.name			= "RAM_SR",
 		.desc			= "WFI and DDR Self Refresh",

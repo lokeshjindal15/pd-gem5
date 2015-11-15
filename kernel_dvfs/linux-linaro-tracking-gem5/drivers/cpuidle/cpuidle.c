@@ -75,12 +75,15 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 {
 	int entered_state;
 
+        // printk (KERN_EMERG "##### cpuidle_enter_state has been called with index %d\n", index);
+
 	struct cpuidle_state *target_state = &drv->states[index];
 	ktime_t time_start, time_end;
 	s64 diff;
 
 	time_start = ktime_get();
 
+        // printk (KERN_EMERG "##### cpuidle_enter_state entering state index %d\n", index);
 	entered_state = target_state->enter(dev, drv, index);
 
 	time_end = ktime_get();
@@ -99,10 +102,13 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 		 * but that results in multiple copies of same code.
 		 */
 		dev->states_usage[entered_state].time += dev->last_residency;
+                // printk (KERN_EMERG "##### cpuidle_enter_state usage of state %d is %d\n", index, dev->states_usage[entered_state].usage);
 		dev->states_usage[entered_state].usage++;
 	} else {
 		dev->last_residency = 0;
 	}
+
+        // printk (KERN_EMERG "##### cpuidle_enter_state returning entered state as %d\n", entered_state);
 
 	return entered_state;
 }
@@ -119,6 +125,8 @@ int cpuidle_idle_call(void)
 	struct cpuidle_driver *drv;
 	int next_state, entered_state;
 	bool broadcast;
+
+        // printk (KERN_EMERG "##### cpuidle_idle_call has been called\n");
 
 	if (off || !initialized)
 		return -ENODEV;

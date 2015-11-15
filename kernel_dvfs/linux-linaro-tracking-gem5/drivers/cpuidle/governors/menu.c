@@ -297,6 +297,8 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	int multiplier;
 	struct timespec t;
 
+        // printk (KERN_EMERG "##### menu_select has been called\n");
+
 	if (data->needs_update) {
 		menu_update(drv, dev);
 		data->needs_update = 0;
@@ -367,6 +369,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		data->exit_us = s->exit_latency;
 	}
 
+        // printk (KERN_EMERG "##### menu_select returning %d\n", data->last_state_idx);
 	return data->last_state_idx;
 }
 
@@ -399,6 +402,8 @@ static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	struct cpuidle_state *target = &drv->states[last_idx];
 	unsigned int measured_us;
 	unsigned int new_factor;
+
+        
 
 	/*
 	 * Ugh, this idle state doesn't support residency measurements, so we
