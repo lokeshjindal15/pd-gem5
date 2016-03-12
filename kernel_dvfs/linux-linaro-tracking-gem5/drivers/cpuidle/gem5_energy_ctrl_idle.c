@@ -29,6 +29,7 @@
 #include <linux/export.h>
 #include <asm/proc-fns.h>
 #include <asm/cpuidle.h>
+#include <linux/ktime.h>
 
 #define GEM5_MAX_STATES	2
 
@@ -38,9 +39,17 @@ static int gem5_enter_idle(struct cpuidle_device *dev,
 			       int index)
 {
 	// at91_standby();
-        printk (KERN_EMERG "##### gem5_enter_idle has been called for CORE:%d\n", dev->cpu);
+    ktime_t time_start, time_end;
+    s64 actual_time;
+    time_start = ktime_get();
+
+    printk (KERN_EMERG "##### gem5_enter_idle has been called for CORE:%d\n", dev->cpu);
 	pdgem5_energy_ctrl_enter_c1((int) dev->cpu);
-        return index;
+    cpu_do_idle();
+    time_end = ktime_get();
+    actual_time = ktime_to_ns(ktime_sub(time_end, time_start));
+    printk(KERN_EMERG "##### Time spent in C1 state for core#%d: %lld\n",dev->cpu,(long long)actual_time);
+    return index;
 }
 
 static struct cpuidle_driver gem5_idle_driver = {
