@@ -31,10 +31,10 @@
 #include <asm/cpuidle.h>
 #include <linux/ktime.h>
 
-#define GEM5_MAX_STATES	2
+#define GEM5_MAX_STATES	3
 
 /* Actual code that puts the SoC in different idle states */
-static int gem5_enter_idle(struct cpuidle_device *dev,
+static int gem5_enter_idle1(struct cpuidle_device *dev,
 			struct cpuidle_driver *drv,
 			       int index)
 {
@@ -43,7 +43,7 @@ static int gem5_enter_idle(struct cpuidle_device *dev,
     s64 actual_time;
     time_start = ktime_get();
 
-    printk (KERN_EMERG "##### gem5_enter_idle has been called for CORE:%d\n", dev->cpu);
+    printk (KERN_EMERG "##### gem5_enter_idle_c1 has been called for CORE:%d\n", dev->cpu);
 	pdgem5_energy_ctrl_enter_c1((int) dev->cpu);
     cpu_do_idle();
     time_end = ktime_get();
@@ -52,20 +52,45 @@ static int gem5_enter_idle(struct cpuidle_device *dev,
     return index;
 }
 
+static int gem5_enter_idle2(struct cpuidle_device *dev,
+            struct cpuidle_driver *drv,
+                   int index)
+{
+    // at91_standby();
+    ktime_t time_start, time_end;
+    s64 actual_time;
+    time_start = ktime_get();
+
+    printk (KERN_EMERG "##### gem5_enter_idle_c2 has been called for CORE:%d\n", dev->cpu);
+    pdgem5_energy_ctrl_enter_c2((int) dev->cpu);
+    cpu_do_idle();
+    time_end = ktime_get();
+    actual_time = ktime_to_ns(ktime_sub(time_end, time_start));
+    printk(KERN_EMERG "##### Time spent in C2 state for core#%d: %lld\n",dev->cpu,(long long)actual_time);
+    return index;
+}
+
+
 static struct cpuidle_driver gem5_idle_driver = {
 	.name			= "gem5_idle",
 	.owner			= THIS_MODULE,
 	.states[0]		= ARM_CPUIDLE_WFI_STATE,
 	.states[1]		= {
-		.enter			= gem5_enter_idle,
-		.exit_latency		= 10,
-		// .target_residency	= 10000,
-		// .target_residency	= 1000,
-		.target_residency	= 100,
+		.enter			= gem5_enter_idle1,
+		.exit_latency		= 2,
+		.target_residency	= 2,
 		.flags			= CPUIDLE_FLAG_TIME_VALID,
-		.name			= "RAM_SR",
-		.desc			= "WFI and DDR Self Refresh",
+		.name			= "C1",
+		.desc			= "C1 Idle state",
 	},
+    .states[2]      = {
+        .enter          = gem5_enter_idle2,
+        .exit_latency       = 10,
+        .target_residency   = 22,
+        .flags          = CPUIDLE_FLAG_TIME_VALID,
+        .name           = "C2",
+        .desc           = "C2 Idle state",
+    },
 	.state_count = GEM5_MAX_STATES,
 };
 

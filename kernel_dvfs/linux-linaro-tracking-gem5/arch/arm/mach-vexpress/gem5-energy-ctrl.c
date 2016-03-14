@@ -388,6 +388,12 @@ void pdgem5_energy_ctrl_enter_c1(int core_num)
 
 }
 
+void pdgem5_energy_ctrl_enter_c2(int core_num)
+{
+    writel( 41 + core_num, info->baseaddr + PERF_LEVEL);
+
+}
+
 //static int __init vexpress_spc_early_init(void)
 //{
 //	__vexpress_spc_check_loaded();
