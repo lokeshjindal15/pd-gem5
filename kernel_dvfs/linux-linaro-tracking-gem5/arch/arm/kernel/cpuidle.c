@@ -17,6 +17,6 @@ int arm_cpuidle_simple_enter(struct cpuidle_device *dev,
 {
     // printk (KERN_EMERG "##### arm_cpuidle_simple_enter has been called for CORE:%d\n", dev->cpu);	
     cpu_do_idle();
-
+    pdgem5_energy_ctrl_enter_c0((int) dev->cpu);
 	return index;
 }

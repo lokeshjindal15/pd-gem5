@@ -381,6 +381,12 @@ bool gem5_energy_ctrl_check_loaded(void)
 }
 EXPORT_SYMBOL_GPL(gem5_energy_ctrl_check_loaded);
 
+void pdgem5_energy_ctrl_enter_c0(int core_num)
+{
+    writel( 33 + core_num, info->baseaddr + PERF_LEVEL);
+
+}
+
 // writes 15564 to the energy ctrl device register of gem5
 void pdgem5_energy_ctrl_enter_c1(int core_num)
 {
@@ -391,6 +397,12 @@ void pdgem5_energy_ctrl_enter_c1(int core_num)
 void pdgem5_energy_ctrl_enter_c2(int core_num)
 {
     writel( 41 + core_num, info->baseaddr + PERF_LEVEL);
+
+}
+
+void pdgem5_energy_ctrl_enter_c3(int core_num)
+{
+    writel( 45 + core_num, info->baseaddr + PERF_LEVEL);
 
 }
 

@@ -207,7 +207,9 @@ LOKESH #define CPUIDLE_DRIVER_STATE_START	1
 #define CPUIDLE_DRIVER_STATE_START	0
 #endif
 
+extern void pdgem5_energy_ctrl_enter_c0(int);
 extern void pdgem5_energy_ctrl_enter_c1(int);
 extern void pdgem5_energy_ctrl_enter_c2(int);
+extern void pdgem5_energy_ctrl_enter_c3(int);
 
 #endif /* _LINUX_CPUIDLE_H */
