@@ -508,7 +508,9 @@ void e1000_io_write(struct e1000_hw *hw, unsigned long port, u32 value);
     E1000_IMS_TXDW   |    \
     E1000_IMS_RXDMT0 |    \
     E1000_IMS_RXSEQ  |    \
-    E1000_IMS_PDGEM5  |    \
+    E1000_IMS_NADVFSH  |    \
+    E1000_IMS_NADVFSA  |    \
+    E1000_IMS_NADVFSI  |    \
     E1000_IMS_LSC)
 
 /* Number of high/low register pairs in the RAR. The RAR (Receive Address
@@ -1722,7 +1724,9 @@ struct e1000_hw {
 #define E1000_ICR_LSC           0x00000004	/* Link Status Change */
 #define E1000_ICR_RXSEQ         0x00000008	/* rx sequence error */
 #define E1000_ICR_RXDMT0        0x00000010	/* rx desc min. threshold (0) */
-#define E1000_ICR_PDGEM5        0x00000020 	/* PDGEM5 interrupt lokeshjindal15*/
+#define E1000_ICR_NADVFSH       0x00000020 	/* netaware dvfs high interrupt lokeshjindal15*/
+#define E1000_ICR_NADVFSA       0x00000100 	/* netaware dvfs adjust interrupt lokeshjindal15*/
+#define E1000_ICR_NADVFSI       0x00000800 	/* netaware dvfs immediate interrupt lokeshjindal15*/
 #define E1000_ICR_RXO           0x00000040	/* rx overrun */
 #define E1000_ICR_RXT0          0x00000080	/* rx timer intr (ring 0) */
 #define E1000_ICR_MDAC          0x00000200	/* MDIO access complete */
@@ -1754,7 +1758,9 @@ struct e1000_hw {
 #define E1000_ICS_LSC       E1000_ICR_LSC	/* Link Status Change */
 #define E1000_ICS_RXSEQ     E1000_ICR_RXSEQ	/* rx sequence error */
 #define E1000_ICS_RXDMT0    E1000_ICR_RXDMT0	/* rx desc min. threshold */
-#define E1000_ICS_PDGEM5    E1000_ICR_PDGEM5	/* pdgem5 interrupt lokeshjindal15 */
+#define E1000_ICS_NADVFSH   E1000_ICR_NADVFSH	/* pdgem5 interrupt lokeshjindal15 */
+#define E1000_ICS_NADVFSA   E1000_ICR_NADVFSA	/* pdgem5 interrupt lokeshjindal15 */
+#define E1000_ICS_NADVFSI   E1000_ICR_NADVFSI	/* pdgem5 interrupt lokeshjindal15 */
 #define E1000_ICS_RXO       E1000_ICR_RXO	/* rx overrun */
 #define E1000_ICS_RXT0      E1000_ICR_RXT0	/* rx timer intr */
 #define E1000_ICS_MDAC      E1000_ICR_MDAC	/* MDIO access complete */
@@ -1784,7 +1790,9 @@ struct e1000_hw {
 #define E1000_IMS_LSC       E1000_ICR_LSC	/* Link Status Change */
 #define E1000_IMS_RXSEQ     E1000_ICR_RXSEQ	/* rx sequence error */
 #define E1000_IMS_RXDMT0    E1000_ICR_RXDMT0	/* rx desc min. threshold */
-#define E1000_IMS_PDGEM5    E1000_ICR_PDGEM5	/* PDGEM5 interrupt lokeshjindal15 */
+#define E1000_IMS_NADVFSH   E1000_ICR_NADVFSH	/* netaware dvfs high intterrupt lokeshjindal15 */
+#define E1000_IMS_NADVFSA   E1000_ICR_NADVFSA	/* netaware dvfs adjust intterrupt interrupt lokeshjindal15 */
+#define E1000_IMS_NADVFSI   E1000_ICR_NADVFSI	/* netaware dvfs adjust intterrupt interrupt lokeshjindal15 */
 #define E1000_IMS_RXO       E1000_ICR_RXO	/* rx overrun */
 #define E1000_IMS_RXT0      E1000_ICR_RXT0	/* rx timer intr */
 #define E1000_IMS_MDAC      E1000_ICR_MDAC	/* MDIO access complete */

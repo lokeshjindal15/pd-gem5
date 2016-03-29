@@ -372,7 +372,9 @@
 #define E1000_ICR_LSC           0x00000004 /* Link Status Change */
 #define E1000_ICR_RXSEQ         0x00000008 /* rx sequence error */
 #define E1000_ICR_RXDMT0        0x00000010 /* rx desc min. threshold (0) */
-#define E1000_ICR_PDGEM5        0x00000020 /* PDGEM5 interrupt lokeshjindal15*/
+#define E1000_ICR_NADVFSH      0x00000020 /* PDGEM5 interrupt lokeshjindal15*/
+#define E1000_ICR_NADVFSA      0x00000100 /* PDGEM5 interrupt lokeshjindal15*/
+#define E1000_ICR_NADVFSI      0x00000800 /* PDGEM5 interrupt lokeshjindal15*/
 #define E1000_ICR_RXT0          0x00000080 /* rx timer intr (ring 0) */
 #define E1000_ICR_VMMB          0x00000100 /* VM MB event */
 #define E1000_ICR_TS            0x00080000 /* Time Sync Interrupt */
@@ -409,7 +411,9 @@
     E1000_IMS_RXDMT0 |    \
     E1000_IMS_RXSEQ  |    \
     E1000_IMS_LSC    |    \
-    E1000_IMS_PDGEM5 |    \
+    E1000_IMS_NADVFSH |    \
+    E1000_IMS_NADVFSA |    \
+    E1000_IMS_NADVFSI |    \
     E1000_IMS_DOUTSYNC)
 
 /* Interrupt Mask Set */
@@ -421,7 +425,9 @@
 #define E1000_IMS_RXDMT0    E1000_ICR_RXDMT0    /* rx desc min. threshold */
 #define E1000_IMS_RXT0      E1000_ICR_RXT0      /* rx timer intr */
 #define E1000_IMS_DRSTA     E1000_ICR_DRSTA     /* Device Reset Asserted */
-#define E1000_IMS_PDGEM5     E1000_ICR_PDGEM5     /* PDGEM5 interrupt lokeshjindal15 */
+#define E1000_IMS_NADVFSH     E1000_ICR_NADVFSH     /* PDGEM5 interrupt lokeshjindal15 */
+#define E1000_IMS_NADVFSA     E1000_ICR_NADVFSA     /* PDGEM5 interrupt lokeshjindal15 */
+#define E1000_IMS_NADVFSI     E1000_ICR_NADVFSI     /* PDGEM5 interrupt lokeshjindal15 */
 #define E1000_IMS_DOUTSYNC  E1000_ICR_DOUTSYNC /* NIC DMA out of sync */
 
 /* Extended Interrupt Mask Set */
@@ -431,7 +437,9 @@
 #define E1000_ICS_LSC       E1000_ICR_LSC       /* Link Status Change */
 #define E1000_ICS_RXDMT0    E1000_ICR_RXDMT0    /* rx desc min. threshold */
 #define E1000_ICS_DRSTA     E1000_ICR_DRSTA     /* Device Reset Aserted */
-#define E1000_ICS_PDGEM5     E1000_ICR_PDGEM5    /* PDGEM5 interrupt lokeshjindal15 */
+#define E1000_ICS_NADVFSH  E1000_ICR_NADVFSH    /* PDGEM5 interrupt lokeshjindal15 */
+#define E1000_ICS_NADVFSA  E1000_ICR_NADVFSA    /* PDGEM5 interrupt lokeshjindal15 */
+#define E1000_ICS_NADVFSI  E1000_ICR_NADVFSI    /* PDGEM5 interrupt lokeshjindal15 */
 
 /* Extended Interrupt Cause Set */
 /* E1000_EITR_CNT_IGNR is only for 82576 and newer */

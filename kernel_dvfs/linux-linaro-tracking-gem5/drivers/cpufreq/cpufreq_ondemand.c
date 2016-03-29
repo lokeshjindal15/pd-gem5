@@ -152,6 +152,14 @@ void pdgem5_dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)
 			CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
 }
 
+void pdgem5_dbs_freq_decrease(struct cpufreq_policy *policy, unsigned int freq)
+{
+    if (policy->cur == policy->min)
+        return;
+
+    __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);
+}
+
 static void dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)
 {
 	// NOPRINT printk (KERN_EMERG "\n*****	dbs_freq_increase to freq = %u", freq);

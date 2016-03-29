@@ -3793,41 +3793,90 @@ static irqreturn_t e1000_intr(int irq, void *data)
 	// NOPRINT 				icr, 0*CACHELINE_SIZE, pdgem5_ondemand_flag[0*CACHELINE_SIZE], 1*CACHELINE_SIZE, pdgem5_ondemand_flag[1*CACHELINE_SIZE], 
 	// NOPRINT 				2*CACHELINE_SIZE, pdgem5_ondemand_flag[2*CACHELINE_SIZE], 3*CACHELINE_SIZE, pdgem5_ondemand_flag[3*CACHELINE_SIZE]);
 
+    /*
+    CAUSE OF INT
+    E1000_ICR_PDGEM5_0: jack up to highest freq
+    E1000_ICR_PDGEM5_1: jack up to medium freq
+    E1000_ICR_PDGEM5_1|E1000_ICR_PDGEM5_0: <unused>
+    E1000_ICR_PDGEM5_2: lower to the min freq
+    E1000_ICR_PDGEM5_2|E1000_ICR_PDGEM5_0: <unused>
+    E1000_ICR_PDGEM5_2|E1000_ICR_PDGEM5_1: <unused>
+    E1000_ICR_PDGEM5_2|E1000_ICR_PDGEM5_1|E1000_ICR_PDGEM5_0: <unused>
+    **/
+    u32 cause_of_int = (icr & E1000_ICR_NADVFSH) | (icr & E1000_ICR_NADVFSA) | (icr & E1000_ICR_NADVFSI);
 	// if (unlikely((icr & E1000_ICR_PDGEM5) && (!pdgem5_ondemand_flag))){
-	if (unlikely((icr & E1000_ICR_PDGEM5))){
-		//NOPRINT printk (KERN_EMERG "##### LOKESH e1000_main.cc: ***** PDGEM5 INTERRUPT DETECTED ***** e1000_intr ICR value read is icr = 0x%08x\n", icr);
+	if (unlikely(cause_of_int == E1000_ICR_NADVFSH)) {
+		//NOPRINT 
+        printk (KERN_EMERG "##### LOKESH e1000_main.cc: ***** NADVFSH INTERRUPT DETECTED ***** e1000_intr ICR value read is icr = 0x%08x\n", icr);
 		
 		// the ifs here are for extra protection so that we don't try to jack up core frequencies 
 		//	on back to back PDGEM5 interrupts in quick succession
 		// could be removed if hardware guarantees it won't send interrupts in quick succession (at least > ondemand sampling period)
-		if (!pdgem5_ondemand_flag[0])
-		{
+//		if (!pdgem5_ondemand_flag[0])
+//		{
 			pdgem5_ondemand_flag[0] = 1;
 			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
 			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
-		}
-		if (!pdgem5_ondemand_flag[1])
-		{
+//		}
+//		if (!pdgem5_ondemand_flag[1])
+//		{
 			pdgem5_ondemand_flag[1] = 1;
 			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
 			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
-		}
-		if (!pdgem5_ondemand_flag[2])
-		{
+//		}
+//		if (!pdgem5_ondemand_flag[2])
+//		{
 			pdgem5_ondemand_flag[2] = 1;
 			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
 			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
-		}
-		if (!pdgem5_ondemand_flag[3])
-		{
+//		}
+//		if (!pdgem5_ondemand_flag[3])
+//		{
 			pdgem5_ondemand_flag[3] = 1;
 			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");
 			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
-		}
-	
-		// should not look at at interrupt E1000_ICR_PDGEM5 beyond this
-		icr  = icr & (~(E1000_ICR_PDGEM5));
+//		}
+
+		// should not look at at interrupt E1000_ICR_NADVFSH beyond this
+		icr  = icr & (~(E1000_ICR_NADVFSH));
 	}
+    else if ( unlikely(cause_of_int == E1000_ICR_NADVFSA) ) {
+        printk (KERN_EMERG "##### LOKESH e1000_main.cc: ***** NADVFSA INTERRUPT DETECTED ***** e1000_intr ICR value read is icr = 0x%08x\n", icr);
+
+//        if (!pdgem5_ondemand_flag[0])
+//        {
+            pdgem5_ondemand_flag[0] = 1;
+            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
+            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min);
+//        }
+//        if (!pdgem5_ondemand_flag[1])
+//        {
+            pdgem5_ondemand_flag[1] = 1;
+            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
+            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->min);
+//        }
+//        if (!pdgem5_ondemand_flag[2])
+//        {
+            pdgem5_ondemand_flag[2] = 1;
+            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
+            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min);
+//        }
+//        if (!pdgem5_ondemand_flag[3])
+//        {
+            pdgem5_ondemand_flag[3] = 1;
+            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");
+            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min);
+//        }
+        
+        // should not look at at interrupt E1000_ICR_NADVFSA beyond this
+        icr  = icr & (~(E1000_ICR_NADVFSA));
+    }
+    else {
+        // mask the three hacky interrupts
+        icr  = icr & (~(E1000_ICR_NADVFSA));
+		icr  = icr & (~(E1000_ICR_NADVFSH));
+		icr  = icr & (~(E1000_ICR_NADVFSI));
+    }
 
 	if (unlikely((!icr)))
 		return IRQ_NONE;  /* Not our interrupt */
