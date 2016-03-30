@@ -33,7 +33,17 @@
 #include <linux/bitops.h>
 #include <linux/if_vlan.h>
 
+
+//////PDGEM5 Project
 struct cpufreq_policy * e1k_cpufreq_policies[4]; //cpufreq policy pointer for 4-core config
+int freq_flip  = 0;
+u64 reqCounter = 0;
+u64 txCount = 0;
+int sw_param;
+static struct timer_list pg_timer;
+static void e1000_pg_timer(unsigned long data);
+//ktime_t lstT;
+//////PDGEM5 Project
 
 char e1000_driver_name[] = "e1000";
 static char e1000_driver_string[] = "Intel(R) PRO/1000 Network Driver";
@@ -260,10 +270,54 @@ static int __init e1000_init_module(void)
 		else
 			pr_info("copybreak enabled for "
 				   "packets <= %u bytes\n", copybreak);
-	}	
+	}
+
+	
+	////PDGEM5 project
+	sw_param = E1000_SW_PARAM;
+	if(sw_param == 1){
+	  freq_flip  = 0;
+	  reqCounter = 0;
+	  txCount = 0;
+	}
+	///PDGEM5 project	
 
 	return ret;
 }
+	
+////PDGEM5 project
+static void e1000_pg_timer(unsigned long data)
+{
+        if((reqCounter > E1000_HI_RATE_TH ) && (freq_flip == 0)){		
+	  pdgem5_ondemand_flag[0] = 1;
+	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
+	  pdgem5_ondemand_flag[1] = 1;
+	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
+	  pdgem5_ondemand_flag[2] = 1;
+	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
+	  pdgem5_ondemand_flag[3] = 1;
+	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
+
+	  freq_flip = 1;
+	} else if (((txCount * 8) <= E1000_TX_LO_RATE_TH) && (reqCounter <= E1000_LO_RATE_TH) && (freq_flip == 1)) {
+	  pdgem5_ondemand_flag[0] = 1;
+	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min);
+	  pdgem5_ondemand_flag[1] = 1;
+	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->min);
+	  pdgem5_ondemand_flag[2] = 1;
+	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min);
+	  pdgem5_ondemand_flag[3] = 1;
+	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min);
+	  
+	  freq_flip = 0;
+	}
+
+	reqCounter = 0;
+	txCount = 0;
+	mod_timer(&pg_timer, jiffies + msecs_to_jiffies(E1000_WD_TIMER));
+
+}	
+////PDGEM5 project
 
 int init_e1k_cpufreq_policies()
 {
@@ -292,6 +346,9 @@ module_init(e1000_init_module);
  **/
 static void __exit e1000_exit_module(void)
 {
+  ////PDGEM5 Project
+	del_timer(&pg_timer);
+  ////PDGEM5 Project
 	pci_unregister_driver(&e1000_driver);
 }
 
@@ -1444,6 +1501,15 @@ static int e1000_open(struct net_device *netdev)
 
 	/* fire a link status change interrupt to start the watchdog */
 	ew32(ICS, E1000_ICS_LSC);
+
+	///PDGEM5 Project
+	sw_param = E1000_SW_PARAM;
+	if(sw_param == 1){
+	  setup_timer(&pg_timer, e1000_pg_timer, 0);
+	  /* setup timer interval to 1 msecs */
+	  mod_timer(&pg_timer, jiffies + msecs_to_jiffies(E1000_WD_TIMER));
+	}
+	///PDGEM5 Project
 
 	return E1000_SUCCESS;
 
@@ -4048,6 +4114,15 @@ static bool e1000_clean_tx_irq(struct e1000_adapter *adapter,
 			netif_stop_queue(netdev);
 		}
 	}
+
+	////PDGEM5 Project
+	sw_param = E1000_SW_PARAM;
+	if((sw_param == 1) && (bytes_compl > 0)){
+	  txCount += bytes_compl;
+	  //printk (KERN_EMERG "Tx data length %u @ %u\n", bytes_compl, jiffies_to_usecs(jiffies));
+	}
+	////PDGEM5 Project
+
 	adapter->total_tx_bytes += total_tx_bytes;
 	adapter->total_tx_packets += total_tx_packets;
 	netdev->stats.tx_bytes += total_tx_bytes;
@@ -4365,6 +4440,10 @@ static bool e1000_clean_rx_irq(struct e1000_adapter *adapter,
 	bool cleaned = false;
 	unsigned int total_rx_bytes=0, total_rx_packets=0;
 
+	//////PDGEM5 Project
+	char data_chk[5];
+	//////PDGEM5 Project
+
 	// printk (KERN_EMERG "##### e1000_clean_rx_irq\n");
 	i = rx_ring->next_to_clean;
 	rx_desc = E1000_RX_DESC(*rx_ring, i);
@@ -4455,6 +4534,22 @@ process_skb:
 				  (u32)(status) |
 				  ((u32)(rx_desc->errors) << 24),
 				  le16_to_cpu(rx_desc->csum), skb);
+
+		///////////////////PDGEM5 Project
+		sw_param = E1000_SW_PARAM;
+		if(sw_param == 1){
+		  if(skb->len > (E1000_CHK_OFFSET+2)){
+		    data_chk[0] = (char) skb->data[E1000_CHK_OFFSET];
+		    data_chk[1] = (char) skb->data[E1000_CHK_OFFSET + 1];
+		    data_chk[2] = (char) skb->data[E1000_CHK_OFFSET + 2];
+		    data_chk[3] = (char) skb->data[E1000_CHK_OFFSET + 3];
+		    data_chk[4] = '\0';
+		    if((strcmp(data_chk,"GET ") == 0) || (strcmp(data_chk,"HEAD") == 0) || (strcmp(data_chk,"POST") == 0) || (data_chk[0] == 128) || ((data_chk[1] < 6) || (data_chk[1] == 9 ) || (data_chk[1] == 16 ))) {
+		      reqCounter++;
+		    } 
+		  }
+		}
+		//////////////////PDGEM5 Project
 
 		e1000_receive_skb(adapter, status, rx_desc->special, skb);
 
