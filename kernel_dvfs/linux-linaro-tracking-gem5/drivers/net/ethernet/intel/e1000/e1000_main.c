@@ -289,7 +289,7 @@ static int __init e1000_init_module(void)
 static void e1000_pg_timer(unsigned long data)
 {
         if((reqCounter > E1000_HI_RATE_TH ) && (freq_flip == 0)){		
-	  pdgem5_ondemand_flag[0] = 1;
+	  /*pdgem5_ondemand_flag[0] = 1;
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
 	  pdgem5_ondemand_flag[1] = 1;
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
@@ -297,11 +297,11 @@ static void e1000_pg_timer(unsigned long data)
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
 	  pdgem5_ondemand_flag[3] = 1;
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
-
+	  */
 	  printk (KERN_EMERG "reqCounter: %llu Freq Increase @ %u \n", reqCounter, jiffies_to_usecs(jiffies));
 	  freq_flip = 1;
 	} else if (((txCount * 8) <= E1000_TX_LO_RATE_TH) && (reqCounter <= E1000_LO_RATE_TH) && (freq_flip == 1)) {
-	  pdgem5_ondemand_flag[0] = 1;
+	  /*pdgem5_ondemand_flag[0] = 1;
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min);
 	  pdgem5_ondemand_flag[1] = 1;
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->min);
@@ -309,6 +309,7 @@ static void e1000_pg_timer(unsigned long data)
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min);
 	  pdgem5_ondemand_flag[3] = 1;
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min);
+	  */
 	  printk (KERN_EMERG "reqCounter: %llu and TxCount: %llu Freq Decrease @ %u \n", reqCounter, txCount, jiffies_to_usecs(jiffies));
 	  freq_flip = 0;
 	}
@@ -4548,7 +4549,7 @@ process_skb:
 		    data_chk[2] = (char) skb->data[E1000_CHK_OFFSET + 2];
 		    data_chk[3] = (char) skb->data[E1000_CHK_OFFSET + 3];
 		    data_chk[4] = '\0';
-		    if((strcmp(data_chk,"GET ") == 0) || (strcmp(data_chk,"HEAD") == 0) || (strcmp(data_chk,"POST") == 0) || (data_chk[0] == 128) || ((data_chk[1] < 6) || (data_chk[1] == 9 ) || (data_chk[1] == 16 ))) {
+		    if((strcmp(data_chk,"GET ") == 0) || (strcmp(data_chk,"HEAD") == 0) || (strcmp(data_chk,"POST") == 0) || ((data_chk[0] == 128) && ((data_chk[1] < 6) || (data_chk[1] == 9 ) || (data_chk[1] == 16 )))) {
 		      printk (KERN_EMERG "Counter Incr %llu @ %u\n", reqCounter,jiffies_to_usecs(jiffies));
 		      reqCounter++;
 		    } 
