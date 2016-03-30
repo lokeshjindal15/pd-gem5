@@ -298,6 +298,7 @@ static void e1000_pg_timer(unsigned long data)
 	  pdgem5_ondemand_flag[3] = 1;
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
 
+	  printk (KERN_EMERG "reqCounter: %llu Freq Increase @ %u \n", reqCounter, jiffies_to_usecs(jiffies));
 	  freq_flip = 1;
 	} else if (((txCount * 8) <= E1000_TX_LO_RATE_TH) && (reqCounter <= E1000_LO_RATE_TH) && (freq_flip == 1)) {
 	  pdgem5_ondemand_flag[0] = 1;
@@ -308,10 +309,13 @@ static void e1000_pg_timer(unsigned long data)
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min);
 	  pdgem5_ondemand_flag[3] = 1;
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min);
-	  
+	  printk (KERN_EMERG "reqCounter: %llu and TxCount: %llu Freq Decrease @ %u \n", reqCounter, txCount, jiffies_to_usecs(jiffies));
 	  freq_flip = 0;
 	}
-
+	if(reqCounter > 0)
+	  printk (KERN_EMERG "Timer Interrupt RX: %llu @ %u\n", reqCounter, jiffies_to_usecs(jiffies));
+	if(txCount > 0)
+	  printk (KERN_EMERG "Timer Interrupt TX: %llu @ %u\n", txCount, jiffies_to_usecs(jiffies));
 	reqCounter = 0;
 	txCount = 0;
 	mod_timer(&pg_timer, jiffies + msecs_to_jiffies(E1000_WD_TIMER));
@@ -4119,7 +4123,7 @@ static bool e1000_clean_tx_irq(struct e1000_adapter *adapter,
 	sw_param = E1000_SW_PARAM;
 	if((sw_param == 1) && (bytes_compl > 0)){
 	  txCount += bytes_compl;
-	  //printk (KERN_EMERG "Tx data length %u @ %u\n", bytes_compl, jiffies_to_usecs(jiffies));
+	  printk (KERN_EMERG "Tx data length %u TXCount: %llu @ %u\n", bytes_compl, txCount,  jiffies_to_usecs(jiffies));
 	}
 	////PDGEM5 Project
 
@@ -4545,6 +4549,7 @@ process_skb:
 		    data_chk[3] = (char) skb->data[E1000_CHK_OFFSET + 3];
 		    data_chk[4] = '\0';
 		    if((strcmp(data_chk,"GET ") == 0) || (strcmp(data_chk,"HEAD") == 0) || (strcmp(data_chk,"POST") == 0) || (data_chk[0] == 128) || ((data_chk[1] < 6) || (data_chk[1] == 9 ) || (data_chk[1] == 16 ))) {
+		      printk (KERN_EMERG "Counter Incr %llu @ %u\n", reqCounter,jiffies_to_usecs(jiffies));
 		      reqCounter++;
 		    } 
 		  }
