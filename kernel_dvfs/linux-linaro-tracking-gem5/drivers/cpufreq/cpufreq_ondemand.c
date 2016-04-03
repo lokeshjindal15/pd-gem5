@@ -17,6 +17,7 @@
 #include <linux/slab.h>
 #include <linux/tick.h>
 #include "cpufreq_governor.h"
+//#include "m5op.h"
 
 /* On-demand governor macros */
 #define DEF_FREQUENCY_UP_THRESHOLD		(80)
@@ -138,39 +139,67 @@ static void ondemand_powersave_bias_init(void)
 
 void pdgem5_dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)
 {
-	// NOPRINT printk (KERN_EMERG "\n*****	PDGEM5 dbs_freq_increase to freq = %u", freq);
-	struct dbs_data *dbs_data = policy->governor_data;
-	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
-
-	if (od_tuners->powersave_bias)
-		freq = od_ops.powersave_bias_target(policy, freq,
-				CPUFREQ_RELATION_H);
-	else if (policy->cur == policy->max)
-		return;
-
-	__cpufreq_driver_target(policy, freq, od_tuners->powersave_bias ?
-			CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
+  struct dbs_data *dbs_data = policy->governor_data;
+  struct od_dbs_tuners *od_tuners = dbs_data->tuners;
+  //unsigned int OldFreq = freq;
+ 
+  if (od_tuners->powersave_bias)
+    freq = od_ops.powersave_bias_target(policy, freq,
+					CPUFREQ_RELATION_H);
+  else if (policy->cur == policy->max)
+    return;
+ 
+  //printk (KERN_EMERG "*****PDGEM5 pdgem5_dbs_freq_increase to freq = %u Old = %u @ %u\n", freq, OldFreq, jiffies_to_usecs(jiffies));
+  //m5_work_begin(201,201);
+  
+  __cpufreq_driver_target(policy, freq, od_tuners->powersave_bias ?
+			  CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
 }
 
 void pdgem5_dbs_freq_decrease(struct cpufreq_policy *policy, unsigned int freq)
 {
-    if (policy->cur == policy->min)
-        return;
 
-    __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);
+  struct dbs_data *dbs_data = policy->governor_data;
+  struct od_dbs_tuners *od_tuners = dbs_data->tuners;
+  //unsigned int OldFreq = freq;
+
+  
+  if (!od_tuners->powersave_bias)
+    freq = od_ops.powersave_bias_target(policy, freq,
+					CPUFREQ_RELATION_L);
+
+  else if (policy->cur == policy->min)
+    return;
+
+  // printk (KERN_EMERG "*****PDGEM5 pdgem5_dbs_freq_decrease to freq = %u Old = %u @ %u\n", freq, OldFreq, jiffies_to_usecs(jiffies));
+  //m5_work_begin(202,202);
+ 
+  __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);
+  //  __cpufreq_driver_target(policy, freq, od_tuners->powersave_bias ?
+  //			  CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
+  /*
+  if (policy->cur == policy->min)
+    return;
+  
+  __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);
+					*/
 }
 
 static void dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)
 {
-	// NOPRINT printk (KERN_EMERG "\n*****	dbs_freq_increase to freq = %u", freq);
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
+	//unsigned int OldFreq = freq;
 
 	if (od_tuners->powersave_bias)
 		freq = od_ops.powersave_bias_target(policy, freq,
 				CPUFREQ_RELATION_H);
 	else if (policy->cur == policy->max)
 		return;
+
+	//    printk (KERN_EMERG "*****PDGEM5 dbs_freq_increase to freq = %u Old = %u @ %u\n", freq, OldFreq, jiffies_to_usecs(jiffies));
+	//m5_work_begin(203,203);
+
 
 	__cpufreq_driver_target(policy, freq, od_tuners->powersave_bias ?
 			CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
@@ -228,7 +257,8 @@ static void od_check_cpu(int cpu, unsigned int load)
 
 		freq_next = od_ops.powersave_bias_target(policy, freq_next,
 					CPUFREQ_RELATION_L);
-		//printk ("\n*****LOKESH Calling __cpufreq_driver_target with freq_next = %d", freq_next);
+		///printk ("\n*****LOKESH Calling __cpufreq_driver_target with freq_next = %d", freq_next);
+		//printk ("*****__cpufreq_driver_target with freq_next = %d @ %u\n", freq_next, );
 		__cpufreq_driver_target(policy, freq_next, CPUFREQ_RELATION_L);
 	}
     } // end of letting ondemand do its own thing
