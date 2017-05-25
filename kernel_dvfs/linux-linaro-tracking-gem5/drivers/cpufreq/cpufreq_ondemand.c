@@ -25,7 +25,7 @@
 #define MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define MICRO_FREQUENCY_UP_THRESHOLD		(95)
 //#define MICRO_FREQUENCY_UP_THRESHOLD		(50)//lokesh
-#define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
+#define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(1000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 
@@ -154,10 +154,31 @@ void pdgem5_dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)
 
 void pdgem5_dbs_freq_decrease(struct cpufreq_policy *policy, unsigned int freq)
 {
+    struct dbs_data *dbs_data = policy->governor_data;
+    struct od_dbs_tuners *od_tuners = dbs_data->tuners;
+    unsigned int freq_next = freq;
+
+/*    if (!od_tuners->powersave_bias)
+        freq = od_ops.powersave_bias_target(policy, freq,
+                CPUFREQ_RELATION_L);
+
     if (policy->cur == policy->min)
         return;
 
-    __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);
+    __cpufreq_driver_target(policy, freq, CPUFREQ_RELATION_L);*/
+    if (policy->cur == policy->min)
+        return;
+
+        if (!od_tuners->powersave_bias) {
+            __cpufreq_driver_target(policy, freq_next,
+                    CPUFREQ_RELATION_L);
+            return;
+        }
+
+        freq_next = od_ops.powersave_bias_target(policy, freq_next,
+                    CPUFREQ_RELATION_L);
+        __cpufreq_driver_target(policy, freq_next, CPUFREQ_RELATION_L);
+
 }
 
 static void dbs_freq_increase(struct cpufreq_policy *policy, unsigned int freq)

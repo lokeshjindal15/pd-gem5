@@ -33,6 +33,7 @@ static int enabled_devices;
 static int off __read_mostly;
 static int initialized __read_mostly;
 
+long long int cpuidle_disable_flag = 0;
 int cpuidle_disabled(void)
 {
 	return off;
@@ -138,7 +139,10 @@ int cpuidle_idle_call(void)
 	drv = cpuidle_get_cpu_driver(dev);
 
 	/* ask the governor for the next state */
-	next_state = cpuidle_curr_governor->select(drv, dev);
+    if (cpuidle_disable_flag == 0)
+    	next_state = cpuidle_curr_governor->select(drv, dev);
+    else
+        next_state = 0;
 	if (need_resched()) {
 		dev->last_residency = 0;
 		/* give the governor an opportunity to reflect on the outcome */

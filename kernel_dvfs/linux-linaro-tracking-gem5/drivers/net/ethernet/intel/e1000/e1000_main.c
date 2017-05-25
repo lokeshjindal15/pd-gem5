@@ -42,9 +42,12 @@ u64 txCount = 0;
 int sw_param;
 static struct timer_list pg_timer;
 static void e1000_pg_timer(unsigned long data);
+
+extern long long int cpuidle_disable_flag;
 //ktime_t lstT;
 //////PDGEM5 Project
-
+unsigned int low_interrupt_count;
+unsigned int freq_levels[5];
 char e1000_driver_name[] = "e1000";
 static char e1000_driver_string[] = "Intel(R) PRO/1000 Network Driver";
 #define DRV_VERSION "7.3.21-k8-NAPI"
@@ -282,6 +285,12 @@ static int __init e1000_init_module(void)
 	}
 	///PDGEM5 project	
 
+    freq_levels[0] = 800000;
+    freq_levels[1] = 1300000;
+    freq_levels[2] = 1800000;
+    freq_levels[3] = 2300000;
+    freq_levels[4] = 2800000;
+
 	return ret;
 }
 	
@@ -289,7 +298,7 @@ static int __init e1000_init_module(void)
 static void e1000_pg_timer(unsigned long data)
 {
         if((reqCounter > E1000_HI_RATE_TH ) && (freq_flip == 0)){		
-	  /*pdgem5_ondemand_flag[0] = 1;
+	  pdgem5_ondemand_flag[0] = 1;
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
 	  pdgem5_ondemand_flag[1] = 1;
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
@@ -297,11 +306,11 @@ static void e1000_pg_timer(unsigned long data)
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
 	  pdgem5_ondemand_flag[3] = 1;
 	  pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
-	  */
-	  printk (KERN_EMERG "reqCounter: %llu Freq Increase @ %u \n", reqCounter, jiffies_to_usecs(jiffies));
+	  
+	  //printk (KERN_EMERG "reqCounter: %llu Freq Increase @ %u \n", reqCounter, jiffies_to_usecs(jiffies));
 	  freq_flip = 1;
 	} else if (((txCount * 8) <= E1000_TX_LO_RATE_TH) && (reqCounter <= E1000_LO_RATE_TH) && (freq_flip == 1)) {
-	  /*pdgem5_ondemand_flag[0] = 1;
+	  pdgem5_ondemand_flag[0] = 1;
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min);
 	  pdgem5_ondemand_flag[1] = 1;
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->min);
@@ -309,14 +318,14 @@ static void e1000_pg_timer(unsigned long data)
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min);
 	  pdgem5_ondemand_flag[3] = 1;
 	  pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min);
-	  */
-	  printk (KERN_EMERG "reqCounter: %llu and TxCount: %llu Freq Decrease @ %u \n", reqCounter, txCount, jiffies_to_usecs(jiffies));
+	  
+	  //printk (KERN_EMERG "reqCounter: %llu and TxCount: %llu Freq Decrease @ %u \n", reqCounter, txCount, jiffies_to_usecs(jiffies));
 	  freq_flip = 0;
 	}
-	if(reqCounter > 0)
-	  printk (KERN_EMERG "Timer Interrupt RX: %llu @ %u\n", reqCounter, jiffies_to_usecs(jiffies));
-	if(txCount > 0)
-	  printk (KERN_EMERG "Timer Interrupt TX: %llu @ %u\n", txCount, jiffies_to_usecs(jiffies));
+//	if(reqCounter > 0)
+//	  printk (KERN_EMERG "Timer Interrupt RX: %llu @ %u\n", reqCounter, jiffies_to_usecs(jiffies));
+//	if(txCount > 0)
+//	  printk (KERN_EMERG "Timer Interrupt TX: %llu @ %u\n", txCount, jiffies_to_usecs(jiffies));
 	reqCounter = 0;
 	txCount = 0;
 	mod_timer(&pg_timer, jiffies + msecs_to_jiffies(E1000_WD_TIMER));
@@ -3838,6 +3847,12 @@ void e1000_update_stats(struct e1000_adapter *adapter)
 	spin_unlock_irqrestore(&adapter->stats_lock, flags);
 }
 
+static void smp_callback(void *v)
+{
+	/* we already woke the CPU up, nothing more to do */
+}
+
+
 /**
  * e1000_intr - Interrupt Handler
  * @irq: interrupt number
@@ -3850,104 +3865,45 @@ static irqreturn_t e1000_intr(int irq, void *data)
 	struct e1000_hw *hw = &adapter->hw;
 	u32 icr = er32(ICR);
 	
-	// #define er32(reg)                                                       
-        // (readl(hw->hw_addr + ((hw->mac_type >= e1000_82543)             
-        //                       ? E1000_##reg : E1000_82542_##reg)))
-
-	// printk (KERN_EMERG "##### e1000_main.c: e1000_intr reading icr register 
-	// 			base = 0x%08x and regaddr = 0x%08x\n", 
-	// 			hw->hw_addr, ((hw->mac_type >= e1000_82543) ? E1000_ICR : E1000_82542_ICR));
-
-	// NOPRINT printk (KERN_EMERG "##### LOKESH e1000_main.cc: e1000_intr ICR value read is icr = 0x%08x and "
-	// NOPRINT 				"pdgem5_ondemand_flag[%d] = %d pdgem5_ondemand_flag[%d] = %d "
-	// NOPRINT 				"pdgem5_ondemand_flag[%d] = %d pdgem5_ondemand_flag[%d] = %d \n", 
-	// NOPRINT 				icr, 0*CACHELINE_SIZE, pdgem5_ondemand_flag[0*CACHELINE_SIZE], 1*CACHELINE_SIZE, pdgem5_ondemand_flag[1*CACHELINE_SIZE], 
-	// NOPRINT 				2*CACHELINE_SIZE, pdgem5_ondemand_flag[2*CACHELINE_SIZE], 3*CACHELINE_SIZE, pdgem5_ondemand_flag[3*CACHELINE_SIZE]);
-
-    /*
-    CAUSE OF INT
-    E1000_ICR_PDGEM5_0: jack up to highest freq
-    E1000_ICR_PDGEM5_1: jack up to medium freq
-    E1000_ICR_PDGEM5_1|E1000_ICR_PDGEM5_0: <unused>
-    E1000_ICR_PDGEM5_2: lower to the min freq
-    E1000_ICR_PDGEM5_2|E1000_ICR_PDGEM5_0: <unused>
-    E1000_ICR_PDGEM5_2|E1000_ICR_PDGEM5_1: <unused>
-    E1000_ICR_PDGEM5_2|E1000_ICR_PDGEM5_1|E1000_ICR_PDGEM5_0: <unused>
-    **/
     u32 cause_of_int = (icr & E1000_ICR_NADVFSH) | (icr & E1000_ICR_NADVFSA) | (icr & E1000_ICR_NADVFSI);
 	// if (unlikely((icr & E1000_ICR_PDGEM5) && (!pdgem5_ondemand_flag))){
-	if (unlikely(cause_of_int == E1000_ICR_NADVFSH)) {
-		//NOPRINT 
-        printk (KERN_EMERG "##### LOKESH e1000_main.cc: ***** NADVFSH INTERRUPT DETECTED ***** e1000_intr ICR value read is icr = 0x%08x\n", icr);
-		
-		// the ifs here are for extra protection so that we don't try to jack up core frequencies 
-		//	on back to back PDGEM5 interrupts in quick succession
-		// could be removed if hardware guarantees it won't send interrupts in quick succession (at least > ondemand sampling period)
-//		if (!pdgem5_ondemand_flag[0])
-//		{
-			pdgem5_ondemand_flag[0] = 1;
-			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
-			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
-//		}
-//		if (!pdgem5_ondemand_flag[1])
-//		{
-			pdgem5_ondemand_flag[1] = 1;
-			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
-			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
-//		}
-//		if (!pdgem5_ondemand_flag[2])
-//		{
-			pdgem5_ondemand_flag[2] = 1;
-			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
-			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
-//		}
-//		if (!pdgem5_ondemand_flag[3])
-//		{
-			pdgem5_ondemand_flag[3] = 1;
-			// NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");
-			pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
-//		}
+/*	if (unlikely(cause_of_int == E1000_ICR_NADVFSH)) {
+        smp_call_function(smp_callback, NULL, 0);
 
-		// should not look at at interrupt E1000_ICR_NADVFSH beyond this
-		icr  = icr & (~(E1000_ICR_NADVFSH));
+	    pdgem5_ondemand_flag[0] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
+		pdgem5_ondemand_flag[1] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
+		pdgem5_ondemand_flag[2] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
+		pdgem5_ondemand_flag[3] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
+
+        low_interrupt_count = 5;
 	}
     else if ( unlikely(cause_of_int == E1000_ICR_NADVFSA) ) {
-        printk (KERN_EMERG "##### LOKESH e1000_main.cc: ***** NADVFSA INTERRUPT DETECTED ***** e1000_intr ICR value read is icr = 0x%08x\n", icr);
 
-//        if (!pdgem5_ondemand_flag[0])
-//        {
-            pdgem5_ondemand_flag[0] = 1;
-            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 0 and setting the flag to 1\n");
-            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->min);
-//        }
-//        if (!pdgem5_ondemand_flag[1])
-//        {
-            pdgem5_ondemand_flag[1] = 1;
-            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 1 and setting the flag to 1\n");
-            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->min);
-//        }
-//        if (!pdgem5_ondemand_flag[2])
-//        {
-            pdgem5_ondemand_flag[2] = 1;
-            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 2 and setting the flag to 1\n");
-            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->min);
-//        }
-//        if (!pdgem5_ondemand_flag[3])
-//        {
-            pdgem5_ondemand_flag[3] = 1;
-            // NOPRINT printk(KERN_EMERG "BUMPING up frequency of CORE 3 and setting the flag to 1\n");
-            pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->min);
-//        }
+        unsigned int freq_next;
+        low_interrupt_count --;
+        freq_next = freq_levels[low_interrupt_count];
+        //freq_next = freq_levels[0];
+        pdgem5_ondemand_flag[0] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[0], freq_next);
+        pdgem5_ondemand_flag[1] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[1], freq_next);
+        pdgem5_ondemand_flag[2] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], freq_next);
+        pdgem5_ondemand_flag[3] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], freq_next);
         
-        // should not look at at interrupt E1000_ICR_NADVFSA beyond this
-        icr  = icr & (~(E1000_ICR_NADVFSA));
+    } else if (unlikely(cause_of_int == E1000_ICR_NADVFSI)) {
+        smp_call_function(smp_callback, NULL, 0);
     }
-    else {
-        // mask the three hacky interrupts
-        icr  = icr & (~(E1000_ICR_NADVFSA));
-		icr  = icr & (~(E1000_ICR_NADVFSH));
-		icr  = icr & (~(E1000_ICR_NADVFSI));
-    }
+*/
+    // mask the three hacky interrupts
+    icr  = icr & (~(E1000_ICR_NADVFSA));
+	icr  = icr & (~(E1000_ICR_NADVFSH));
+	icr  = icr & (~(E1000_ICR_NADVFSI));
 
 	if (unlikely((!icr)))
 		return IRQ_NONE;  /* Not our interrupt */
@@ -3969,6 +3925,50 @@ static irqreturn_t e1000_intr(int irq, void *data)
 	/* disable interrupts, without the synchronize_irq bit */
 	ew32(IMC, ~0);
 	E1000_WRITE_FLUSH();
+
+
+	if (unlikely(cause_of_int == E1000_ICR_NADVFSH)) {
+        smp_call_function(smp_callback, NULL, 0);
+        cpuidle_disable_flag = 1;
+
+	    pdgem5_ondemand_flag[0] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[0], e1k_cpufreq_policies[0]->max);
+		pdgem5_ondemand_flag[1] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[1], e1k_cpufreq_policies[1]->max);
+		pdgem5_ondemand_flag[2] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[2], e1k_cpufreq_policies[2]->max);
+		pdgem5_ondemand_flag[3] = 1;
+		pdgem5_dbs_freq_increase(e1k_cpufreq_policies[3], e1k_cpufreq_policies[3]->max);
+
+        low_interrupt_count = 5;
+	}
+    else if ( unlikely(cause_of_int == E1000_ICR_NADVFSA) ) {
+
+        unsigned int freq_next;
+        low_interrupt_count --;
+        smp_call_function(smp_callback, NULL, 0);
+        cpuidle_disable_flag = 0;
+        //freq_next = freq_levels[low_interrupt_count];
+        freq_next = freq_levels[0];
+        pdgem5_ondemand_flag[0] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[0], freq_next);
+        pdgem5_ondemand_flag[1] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[1], freq_next);
+        pdgem5_ondemand_flag[2] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[2], freq_next);
+        pdgem5_ondemand_flag[3] = 1;
+        pdgem5_dbs_freq_decrease(e1k_cpufreq_policies[3], freq_next);
+        
+    } else if (unlikely(cause_of_int == E1000_ICR_NADVFSI)) {
+        if (cpuidle_disable_flag == 0) {
+            smp_call_function(smp_callback, NULL, 0);
+            cpuidle_disable_flag = 1;
+        } else {
+            // one for disable one for enable
+            cpuidle_disable_flag = 0;
+        }
+    }
+ 
 
 	if (likely(napi_schedule_prep(&adapter->napi))) {
 		adapter->total_tx_bytes = 0;
@@ -4550,7 +4550,7 @@ process_skb:
 		    data_chk[3] = (char) skb->data[E1000_CHK_OFFSET + 3];
 		    data_chk[4] = '\0';
 		    if((strcmp(data_chk,"GET ") == 0) || (strcmp(data_chk,"HEAD") == 0) || (strcmp(data_chk,"POST") == 0) || ((data_chk[0] == 128) && ((data_chk[1] < 6) || (data_chk[1] == 9 ) || (data_chk[1] == 16 )))) {
-		      printk (KERN_EMERG "Counter Incr %llu @ %u\n", reqCounter,jiffies_to_usecs(jiffies));
+		     // printk (KERN_EMERG "Counter Incr %llu @ %u\n", reqCounter,jiffies_to_usecs(jiffies));
 		      reqCounter++;
 		    } 
 		  }

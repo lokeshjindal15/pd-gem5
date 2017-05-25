@@ -94,7 +94,7 @@ struct e1000_adapter;
 #define E1000_TX_LO_RATE_TH 10000  ///10000 bits per     1 msec = 10Mega bits     per sec 
 #define E1000_CHK_OFFSET 66        /// Apache offset
 //#define E1000_MemCach_CHK_OFFSET   /// Memcach offset 
-#define E1000_SW_PARAM   1         /// 1 -> enable SW monitering | 0 -> disable it
+#define E1000_SW_PARAM   0         /// 1 -> enable SW monitering | 0 -> disable it
 #define E1000_WD_TIMER   1         /// 1 msec
 /////PDGEM5 Project
 
